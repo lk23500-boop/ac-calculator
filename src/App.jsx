@@ -25,7 +25,9 @@ import {
   Check,
   Link,
   Printer,
-  X
+  X,
+  Plus,
+  Lock
 } from 'lucide-react';
 
 export default function App() {
@@ -101,6 +103,12 @@ export default function App() {
   // 스마트링크 상태
   const [smartLinkCount, setSmartLinkCount] = useState(0);
   const [isSmartLink, setIsSmartLink] = useState(false); 
+
+  // --- [NEW] 기타 작업 직접 입력 상태 ---
+  const [customItem1Name, setCustomItem1Name] = useState('');
+  const [customItem1Price, setCustomItem1Price] = useState(0);
+  const [customItem2Name, setCustomItem2Name] = useState('');
+  const [customItem2Price, setCustomItem2Price] = useState(0);
 
   const [totalPrice, setTotalPrice] = useState(0);
   const [breakdown, setBreakdown] = useState({
@@ -227,6 +235,46 @@ export default function App() {
     transport: { none: 0, wall_low: 30000, stand_low: 50000, high_floor: 100000, manual_100m: 30000 }
   };
 
+  // --- [NEW] 배관 길이에 따른 냉매 충전 자동 설정 ---
+  useEffect(() => {
+    // 일반 배관 선택 시에만 작동
+    if (installType === 'general') {
+      let totalLen = pipeLength + specialPipeLength; // 특수 배관 길이 합산
+      if (acType === '2in1') {
+        totalLen += pipeLengthWall;
+      }
+
+      // 초기화
+      const newGas = { cool_under5: 0, cool_over5: 0, heat_under5: 0, heat_over5: 0, over10: 0 };
+
+      if (totalLen > 0) {
+        let useHeatingLogic = false;
+        
+        // 난방 모드이거나, 중고 모드 중 난방 관련 기기인 경우 난방 로직 적용
+        if (acMode === 'heating') {
+          useHeatingLogic = true;
+        } else if (acMode === 'used') {
+          // 중고 모드일 경우 기기 타입으로 유추 (냉난방 겸용 또는 대형 등)
+          if (['wall_heat', 'allinone_heat', 'stand_comm', 'large', 'ceiling'].includes(acType)) {
+            useHeatingLogic = true;
+          }
+        }
+
+        if (totalLen <= 5) {
+          if (useHeatingLogic) newGas.heat_under5 = 1;
+          else newGas.cool_under5 = 1;
+        } else if (totalLen <= 10) {
+          if (useHeatingLogic) newGas.heat_over5 = 1;
+          else newGas.cool_over5 = 1;
+        } else {
+          // 11m 이상
+          newGas.over10 = 1;
+        }
+      }
+      setGasCounts(newGas);
+    }
+  }, [installType, pipeLength, pipeLengthWall, specialPipeLength, acMode, acType]);
+
   // --- 자동 설정 및 계산 로직 ---
   useEffect(() => {
     const currentList = AC_TYPES[acMode].map(item => item.id);
@@ -305,13 +353,18 @@ export default function App() {
     const prePipingPrice = isPrePiping ? PRICING.options.prePiping : 0;
     let smartLinkPrice = acMode === 'used' ? smartLinkCount * PRICING.options.smartLink : (isSmartLink ? PRICING.options.smartLink : 0);
 
-    const othersTotal = holePrice + airGuidePrice + ceilingWorkPrice + floorSleevePrice + inspectionHolePrice + prePipingPrice + smartLinkPrice;
+    // Re-calculate smartLinkPrice for total calculation correctly based on logic
+    const calcSmartLinkPrice = acMode === 'used' ? smartLinkCount * PRICING.options.smartLink : (isSmartLink ? PRICING.options.smartLink : 0);
+
+    const customItemsTotal = customItem1Price + customItem2Price; // 직접 입력 합계
+
+    const othersTotal = holePrice + airGuidePrice + ceilingWorkPrice + floorSleevePrice + inspectionHolePrice + prePipingPrice + calcSmartLinkPrice + customItemsTotal;
     const total = basePrice + pipePrice + specialPipePrice + buriedPrice + rackPrice + gasPrice + electricPrice + drainPrice + removalPrice + transportPrice + transportMovePrice + othersTotal;
 
     setIsNegotiable(negotiableFlag);
     setTotalPrice(total);
     setBreakdown({ base: basePrice, pipe: pipePrice + specialPipePrice + buriedPrice, electric: electricPrice, others: rackPrice + gasPrice + drainPrice + removalPrice + transportPrice + transportMovePrice + othersTotal });
-  }, [acMode, acType, acCount, installType, pipeLength, pipeLengthWall, specialPipeLength, holeCountGeneral, holeCountDifficult, holeCountSpecial, rackCounts, gasCounts, powerCableType, powerCableLength, breakerCounts, drainPumpCounts, drainHoseLength, drainPVCLength, removalType, transportType, transportMoveType, airGuideCount, isCeilingWork, floorSleeveCount, inspectionHoleCount, isPrePiping, buriedCount, isSmartLink, smartLinkCount]);
+  }, [acMode, acType, acCount, installType, pipeLength, pipeLengthWall, specialPipeLength, holeCountGeneral, holeCountDifficult, holeCountSpecial, rackCounts, gasCounts, powerCableType, powerCableLength, breakerCounts, drainPumpCounts, drainHoseLength, drainPVCLength, removalType, transportType, transportMoveType, airGuideCount, isCeilingWork, floorSleeveCount, inspectionHoleCount, isPrePiping, buriedCount, isSmartLink, smartLinkCount, customItem1Price, customItem2Price]);
 
   const formatCurrency = (amount) => new Intl.NumberFormat('ko-KR').format(amount);
   const getAcTypeLabel = () => AC_TYPES[acMode].find(item => item.id === acType)?.label || '';
@@ -327,6 +380,7 @@ export default function App() {
     setDrainHoseLength(0); setDrainPVCLength(0);
     setRemovalType('none'); setTransportMoveType('none'); setTransportType('none');
     setAirGuideCount(0); setIsCeilingWork(false); setFloorSleeveCount(0); setInspectionHoleCount(0); setIsPrePiping(false); setIsSmartLink(false); setSmartLinkCount(0);
+    setCustomItem1Name(''); setCustomItem1Price(0); setCustomItem2Name(''); setCustomItem2Price(0);
     setShowReceiptModal(false);
   };
 
@@ -350,6 +404,8 @@ export default function App() {
 - 배관비용: ${formatCurrency(breakdown.pipe)}원
 - 전기공사: ${formatCurrency(breakdown.electric)}원
 - 기타작업: ${formatCurrency(breakdown.others)}원 (철거/운반/앵글 등 포함)
+${customItem1Name || customItem1Price > 0 ? `- 추가: ${customItem1Name || '기타항목1'} (${formatCurrency(customItem1Price)}원)` : ''}
+${customItem2Name || customItem2Price > 0 ? `- 추가: ${customItem2Name || '기타항목2'} (${formatCurrency(customItem2Price)}원)` : ''}
 
 ■ 총 예상 견적: ${formatCurrency(totalPrice)}원 ${isNegotiable ? '(+별도협의)' : ''}
 
@@ -370,7 +426,7 @@ export default function App() {
   };
 
   const handlePrint = () => {
-     setShowReceiptModal(true);
+       setShowReceiptModal(true);
   };
 
   return (
@@ -386,7 +442,9 @@ export default function App() {
                 <div className={`${t.bgHeaderIcon} p-1.5 rounded-lg text-white transition-colors duration-300`}>
                   <Calculator size={18} />
                 </div>
-                <h1 className="font-bold text-base text-slate-800">에어컨 설치 견적 (상세)</h1>
+                <h1 className="font-bold text-base text-slate-800">
+                  에어컨 설치 <span className={`${t.textPrimary} font-extrabold`}>셀프</span> 계산기
+                </h1>
               </div>
               <button 
                 type="button"
@@ -450,11 +508,38 @@ export default function App() {
                <div className="space-y-6 animate-in fade-in slide-in-from-top-2 duration-300">
                  {acType === '2in1' ? (
                    <>
-                     <div><div className="flex justify-between mb-2"><span className="text-slate-700 font-medium text-sm">스탠드 배관</span><span className={`${t.textPrimary} font-bold`}>{pipeLength}m</span></div><input type="range" min="0" max="50" step="1" value={pipeLength} onChange={(e) => setPipeLength(parseInt(e.target.value))} className={`w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer ${t.accentColor}`} /><div className="text-xs text-slate-400 mt-1 text-right">단가: {formatCurrency(PRICING.pipePerMeter[acMode]['2in1_stand'] || PRICING.pipePerMeter[acMode]['stand'])}원/m</div></div>
-                     <div><div className="flex justify-between mb-2"><span className="text-slate-700 font-medium text-sm">벽걸이 배관</span><span className={`${t.textPrimary} font-bold`}>{pipeLengthWall}m</span></div><input type="range" min="0" max="50" step="1" value={pipeLengthWall} onChange={(e) => setPipeLengthWall(parseInt(e.target.value))} className={`w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer ${t.accentColor}`} /><div className="text-xs text-slate-400 mt-1 text-right">단가: {formatCurrency(PRICING.pipePerMeter[acMode]['2in1_wall'] || PRICING.pipePerMeter[acMode]['wall'])}원/m</div></div>
+                     <div>
+                       <div className="flex justify-between items-center mb-2">
+                         <span className="text-slate-700 font-medium text-sm">스탠드 배관</span>
+                       </div>
+                       <div className="flex items-center gap-2">
+                          <input type="number" min="0" max="999" value={pipeLength || ''} onChange={(e) => setPipeLength(Math.min(999, Math.max(0, parseInt(e.target.value) || 0)))} className={`flex-1 p-2 border border-slate-200 rounded-lg text-right focus:outline-none focus:ring-2 ${t.ringActive}`} placeholder="0" />
+                          <span className="text-sm font-bold text-slate-600">m</span>
+                       </div>
+                       <div className="text-xs text-slate-400 mt-1 text-right">단가: {formatCurrency(PRICING.pipePerMeter[acMode]['2in1_stand'] || PRICING.pipePerMeter[acMode]['stand'])}원/m</div>
+                     </div>
+                     <div>
+                       <div className="flex justify-between items-center mb-2">
+                         <span className="text-slate-700 font-medium text-sm">벽걸이 배관</span>
+                       </div>
+                       <div className="flex items-center gap-2">
+                          <input type="number" min="0" max="999" value={pipeLengthWall || ''} onChange={(e) => setPipeLengthWall(Math.min(999, Math.max(0, parseInt(e.target.value) || 0)))} className={`flex-1 p-2 border border-slate-200 rounded-lg text-right focus:outline-none focus:ring-2 ${t.ringActive}`} placeholder="0" />
+                          <span className="text-sm font-bold text-slate-600">m</span>
+                       </div>
+                       <div className="text-xs text-slate-400 mt-1 text-right">단가: {formatCurrency(PRICING.pipePerMeter[acMode]['2in1_wall'] || PRICING.pipePerMeter[acMode]['wall'])}원/m</div>
+                     </div>
                    </>
                  ) : (
-                   <div><div className="flex justify-between mb-2"><span className="text-slate-700 font-medium text-sm">추가 배관</span><span className={`${t.textPrimary} font-bold`}>{pipeLength}m</span></div><input type="range" min="0" max="50" step="1" value={pipeLength} onChange={(e) => setPipeLength(parseInt(e.target.value))} className={`w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer ${t.accentColor}`} /><div className={`bg-slate-50 p-3 rounded-lg flex items-center gap-2 text-xs text-slate-600 mt-3`}><AlertCircle size={14} className={`${t.alertIcon} shrink-0`} /><span>추가 배관 단가: 1m당 {formatCurrency(AC_TYPES[acMode].find(i => i.id === acType)?.pipePrice || 0)}원</span></div></div>
+                   <div>
+                     <div className="flex justify-between items-center mb-2">
+                        <span className="text-slate-700 font-medium text-sm">추가 배관</span>
+                     </div>
+                     <div className="flex items-center gap-2">
+                        <input type="number" min="0" max="999" value={pipeLength || ''} onChange={(e) => setPipeLength(Math.min(999, Math.max(0, parseInt(e.target.value) || 0)))} className={`flex-1 p-2 border border-slate-200 rounded-lg text-right focus:outline-none focus:ring-2 ${t.ringActive}`} placeholder="0" />
+                        <span className="text-sm font-bold text-slate-600">m</span>
+                     </div>
+                     <div className={`bg-slate-50 p-3 rounded-lg flex items-center gap-2 text-xs text-slate-600 mt-3`}><AlertCircle size={14} className={`${t.alertIcon} shrink-0`} /><span>추가 배관 단가: 1m당 {formatCurrency(AC_TYPES[acMode].find(i => i.id === acType)?.pipePrice || 0)}원</span></div>
+                   </div>
                  )}
                </div>
              )}
@@ -464,47 +549,79 @@ export default function App() {
                   <div className="bg-slate-50 p-4 rounded-xl flex items-center justify-between"><div className="text-sm text-slate-600 flex flex-col"><span className="font-medium">매립배관 수량 (실내기)</span><span className="text-xs text-slate-400">대당 100,000원</span></div><div className="flex items-center gap-3 bg-white px-2 py-1 rounded-lg border border-slate-200"><button onClick={() => setBuriedCount(Math.max(1, buriedCount - 1))} className="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded text-slate-600">-</button><span className={`font-bold text-lg w-6 text-center ${t.textPrimary}`}>{buriedCount}</span><button onClick={() => setBuriedCount(buriedCount + 1)} className="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded text-slate-600">+</button></div></div>
                </div>
              )}
-             <div className="pt-4 border-t border-slate-100 mt-4"><div className="flex justify-between mb-1"><span className="text-sm font-medium text-slate-700">특수배관 (주름관)</span>{specialPipeLength > 0 && <span className={`text-xs font-bold ${t.textPrimary}`}>{specialPipeLength}m</span>}</div><input type="range" min="0" max="10" step="1" value={specialPipeLength} onChange={(e) => setSpecialPipeLength(parseInt(e.target.value))} className={`w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer ${t.accentColor}`} /><div className="text-xs text-slate-400 mt-1 text-right">굴곡이 심한 곳 (m당 30,000원)</div></div>
+             <div className="pt-4 border-t border-slate-100 mt-4">
+               <div className="flex justify-between items-center mb-2">
+                 <span className="text-sm font-medium text-slate-700">특수배관 (주름관)</span>
+               </div>
+               <div className="flex items-center gap-2">
+                 <input type="number" min="0" max="999" value={specialPipeLength || ''} onChange={(e) => setSpecialPipeLength(Math.min(999, Math.max(0, parseInt(e.target.value) || 0)))} className={`flex-1 p-2 border border-slate-200 rounded-lg text-right focus:outline-none focus:ring-2 ${t.ringActive}`} placeholder="0" />
+                 <span className="text-sm font-bold text-slate-600">m</span>
+               </div>
+               <div className="text-xs text-slate-400 mt-1 text-right">굴곡이 심한 곳 (m당 30,000원)</div>
+             </div>
              {acMode === 'used' && (
                <div className="pt-4 border-t border-slate-100 mt-4 animate-in fade-in slide-in-from-top-2">
                   <div className="bg-slate-50 p-4 rounded-xl flex items-center justify-between">
-                     <div className="flex items-center gap-2">
-                       <Link size={18} className="text-slate-500" />
-                       <div className="text-sm text-slate-600 flex flex-col">
-                         <span className="font-medium">스마트링크(삼성전자)</span>
-                         <span className="text-xs text-slate-400">필수 / 실내기 대당 30,000원</span>
-                       </div>
-                     </div>
-                     <div className="flex items-center gap-3 bg-white px-2 py-1 rounded-lg border border-slate-200">
-                       <button onClick={() => setSmartLinkCount(Math.max(0, smartLinkCount - 1))} className="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded text-slate-600">-</button>
-                       <span className={`font-bold text-lg w-6 text-center ${t.textPrimary}`}>{smartLinkCount}</span>
-                       <button onClick={() => setSmartLinkCount(smartLinkCount + 1)} className="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded text-slate-600">+</button>
-                     </div>
+                      <div className="flex items-center gap-2">
+                        <Link size={18} className="text-slate-500" />
+                        <div className="text-sm text-slate-600 flex flex-col">
+                          <span className="font-medium">스마트링크(삼성전자)</span>
+                          <span className="text-xs text-slate-400">필수 / 실내기 대당 30,000원</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 bg-white px-2 py-1 rounded-lg border border-slate-200">
+                        <button onClick={() => setSmartLinkCount(Math.max(0, smartLinkCount - 1))} className="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded text-slate-600">-</button>
+                        <span className={`font-bold text-lg w-6 text-center ${t.textPrimary}`}>{smartLinkCount}</span>
+                        <button onClick={() => setSmartLinkCount(smartLinkCount + 1)} className="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded text-slate-600">+</button>
+                      </div>
                   </div>
                </div>
              )}
            </section>
 
+           {/* 3. 냉매 */}
            <section className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 mt-4 transition-all">
-             <h2 className="text-sm font-bold text-slate-400 mb-4 uppercase tracking-wider flex items-center gap-2"><Droplets size={16} /> <span>냉매(가스) 충전</span><span className="text-[11px] font-normal text-slate-400 ml-1 tracking-normal">(배관 추가시 적용)</span></h2>
-             <div className="space-y-2">
+             <h2 className="text-sm font-bold text-slate-400 mb-4 uppercase tracking-wider flex items-center gap-2">
+               <Droplets size={16} /> 
+               <span>냉매(가스) 충전</span>
+               <span className="text-[11px] font-normal text-slate-400 ml-1 tracking-normal">
+                 {installType === 'general' ? '(배관길이 기기정보에 따라 자동계산 됩니다)' : '(배관 추가시 적용)'}
+               </span>
+             </h2>
+             
+             <div className="space-y-1.5">
                {getGasOptionsList().map((opt) => (
-                  <div key={opt.id} className={`w-full flex items-center justify-between p-3 rounded-lg border text-sm transition-all ${gasCounts[opt.id] > 0 ? `${t.borderActive} ${t.bgActive} ring-1 ${t.ringActive}` : 'border-slate-200 bg-white'}`}>
+                  <div key={opt.id} className={`w-full flex items-center justify-between p-2.5 rounded-xl border border-slate-200 bg-white transition-all hover:bg-slate-50 ${gasCounts[opt.id] > 0 ? `${t.borderActive} ${t.bgActive} ring-1 ${t.ringActive}` : ''}`}>
                     <div className="flex flex-col flex-1 pr-2"><span className={`font-medium ${gasCounts[opt.id] > 0 ? t.textActive : 'text-slate-600'}`}>{opt.label}</span><span className="text-xs text-slate-400 font-normal">{opt.text ? opt.text : `${formatCurrency(opt.price)}원`}</span></div>
-                    <div className="flex items-center gap-3 bg-white px-2 py-1 rounded-lg border border-slate-200 shrink-0"><button onClick={() => updateCount(setGasCounts, opt.id, -1)} className="w-6 h-6 flex items-center justify-center hover:bg-slate-100 rounded text-slate-600">-</button><span className={`font-bold w-4 text-center ${t.textPrimary}`}>{gasCounts[opt.id]}</span><button onClick={() => updateCount(setGasCounts, opt.id, 1)} className="w-6 h-6 flex items-center justify-center hover:bg-slate-100 rounded text-slate-600">+</button></div>
+                    <div className="flex items-center gap-3 bg-white px-2 py-1 rounded-lg border border-slate-200 shrink-0">
+                      {installType === 'general' ? (
+                         // 자동 설정 모드일 땐 버튼 비활성화 (보여주기만 함)
+                         <span className={`font-bold w-full text-center ${gasCounts[opt.id] > 0 ? t.textPrimary : 'text-slate-300'}`}>
+                           {gasCounts[opt.id] > 0 ? '적용됨' : '-'}
+                         </span>
+                      ) : (
+                        // 매립 배관 등 수동 모드
+                        <>
+                          <button onClick={() => updateCount(setGasCounts, opt.id, -1)} className="w-6 h-6 flex items-center justify-center hover:bg-slate-100 rounded text-slate-600">-</button>
+                          <span className={`font-bold w-4 text-center ${t.textPrimary}`}>{gasCounts[opt.id]}</span>
+                          <button onClick={() => updateCount(setGasCounts, opt.id, 1)} className="w-6 h-6 flex items-center justify-center hover:bg-slate-100 rounded text-slate-600">+</button>
+                        </>
+                      )}
+                    </div>
                   </div>
                ))}
              </div>
            </section>
 
+           {/* 4. 실외기 */}
            <section className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 mt-4 transition-all">
              <h2 className="text-sm font-bold text-slate-400 mb-4 uppercase tracking-wider flex items-center gap-2"><Home size={16} /> 실외기 설치</h2>
              <div className="space-y-4">
                 <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
                    <div className="text-sm font-bold text-slate-700 mb-2 ml-1 flex items-center gap-1"><Wrench size={14} className="text-blue-500" /> 신규 앵글 제작</div>
-                   <div className="space-y-1">
+                   <div className="space-y-1.5">
                    {[{ id: 'new_900', label: '900mm(벽걸이 9평이하)', price: 110000 }, { id: 'new_1000', label: '1000mm(벽/스 16평이하)', price: 150000 }, { id: 'new_1100', label: '1100mm(중대형/40평이하)', price: 200000 }, { id: 'new_dual', label: '2단앵글', price: 180000 }, { id: 'new_custom', label: '제작앵글', price: 0, text: '별도 협의' }].map((opt) => (
-                     <div key={opt.id} className={`w-full flex items-center justify-between p-2 rounded-lg bg-white border ${rackCounts[opt.id] > 0 ? `${t.borderActive} ${t.textActive} ring-1 ${t.ringActive}` : 'border-slate-200 text-slate-600'}`}>
+                     <div key={opt.id} className={`w-full flex items-center justify-between p-2.5 rounded-xl border border-slate-200 bg-white transition-all hover:bg-slate-50 ${rackCounts[opt.id] > 0 ? `${t.borderActive} ${t.textActive} ring-1 ${t.ringActive}` : 'text-slate-600'}`}>
                        <div className="flex flex-col flex-1 pr-2"><span className={`font-medium text-sm`}>{opt.label}</span><span className="text-xs font-normal opacity-70 mt-0.5 block">{opt.text ? opt.text : `${formatCurrency(opt.price)}원`}</span></div>
                        <div className="flex items-center gap-3 bg-gray-50 px-2 py-1 rounded-md border border-gray-100 shrink-0"><button onClick={() => updateCount(setRackCounts, opt.id, -1)} className="w-5 h-5 flex items-center justify-center hover:bg-gray-200 rounded text-slate-500">-</button><span className={`font-bold w-4 text-center text-sm`}>{rackCounts[opt.id]}</span><button onClick={() => updateCount(setRackCounts, opt.id, 1)} className="w-5 h-5 flex items-center justify-center hover:bg-gray-200 rounded text-slate-500">+</button></div>
                      </div>
@@ -513,9 +630,9 @@ export default function App() {
                 </div>
                 <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
                    <div className="text-sm font-bold text-slate-700 mb-2 ml-1 flex items-center gap-1"><RotateCcw size={14} className="text-green-500" /> 앵글 보유 (재설치)</div>
-                   <div className="space-y-1">
+                   <div className="space-y-1.5">
                    {[{ id: 'exist_small', label: '900mm 이하', price: 70000 }, { id: 'exist_large', label: '900mm 초과', price: 90000 }].map((opt) => (
-                     <div key={opt.id} className={`w-full flex items-center justify-between p-2 rounded-lg bg-white border ${rackCounts[opt.id] > 0 ? `${t.borderActive} ${t.textActive} ring-1 ${t.ringActive}` : 'border-slate-200 text-slate-600'}`}>
+                     <div key={opt.id} className={`w-full flex items-center justify-between p-2.5 rounded-xl border border-slate-200 bg-white transition-all hover:bg-slate-50 ${rackCounts[opt.id] > 0 ? `${t.borderActive} ${t.textActive} ring-1 ${t.ringActive}` : 'text-slate-600'}`}>
                        <div className="flex flex-col flex-1 pr-2"><span className={`font-medium text-sm`}>{opt.label}</span><span className="text-xs font-normal opacity-70 mt-0.5 block">{formatCurrency(opt.price)}원</span></div>
                        <div className="flex items-center gap-3 bg-gray-50 px-2 py-1 rounded-md border border-gray-100 shrink-0"><button onClick={() => updateCount(setRackCounts, opt.id, -1)} className="w-5 h-5 flex items-center justify-center hover:bg-gray-200 rounded text-slate-500">-</button><span className={`font-bold w-4 text-center text-sm`}>{rackCounts[opt.id]}</span><button onClick={() => updateCount(setRackCounts, opt.id, 1)} className="w-5 h-5 flex items-center justify-center hover:bg-gray-200 rounded text-slate-500">+</button></div>
                      </div>
@@ -524,9 +641,9 @@ export default function App() {
                 </div>
                 <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
                    <div className="text-sm font-bold text-slate-700 mb-2 ml-1 flex items-center gap-1"><AlertCircle size={14} className="text-red-500" /> 위험수당 (2층이상)</div>
-                   <div className="space-y-1">
+                   <div className="space-y-1.5">
                    {[{ id: 'danger_small', label: '벽걸이 (9평 이하)', price: 30000 }, { id: 'danger_medium', label: '벽걸이/스탠드 (16평 이하)', price: 50000 }, { id: 'danger_large', label: '중대형 (40평 이하)', price: 100000 }].map((opt) => (
-                     <div key={opt.id} className={`w-full flex items-center justify-between p-2 rounded-lg bg-white border ${rackCounts[opt.id] > 0 ? `${t.borderActive} ${t.textActive} ring-1 ${t.ringActive}` : 'border-slate-200 text-slate-600'}`}>
+                     <div key={opt.id} className={`w-full flex items-center justify-between p-2.5 rounded-xl border border-slate-200 bg-white transition-all hover:bg-slate-50 ${rackCounts[opt.id] > 0 ? `${t.borderActive} ${t.textActive} ring-1 ${t.ringActive}` : 'text-slate-600'}`}>
                        <div className="flex flex-col flex-1 pr-2"><span className={`font-medium text-sm`}>{opt.label}</span><span className="text-xs font-normal opacity-70 mt-0.5 block">{formatCurrency(opt.price)}원</span></div>
                        <div className="flex items-center gap-3 bg-gray-50 px-2 py-1 rounded-md border border-gray-100 shrink-0"><button onClick={() => updateCount(setRackCounts, opt.id, -1)} className="w-5 h-5 flex items-center justify-center hover:bg-gray-200 rounded text-slate-500">-</button><span className={`font-bold w-4 text-center text-sm`}>{rackCounts[opt.id]}</span><button onClick={() => updateCount(setRackCounts, opt.id, 1)} className="w-5 h-5 flex items-center justify-center hover:bg-gray-200 rounded text-slate-500">+</button></div>
                      </div>
@@ -535,9 +652,9 @@ export default function App() {
                 </div>
                 <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
                    <div className="text-sm font-bold text-slate-700 mb-2 ml-1 flex items-center gap-1"><CheckCircle2 size={14} className="text-slate-500" /> 바닥받침대 (베이스)</div>
-                   <div className="space-y-1">
+                   <div className="space-y-1.5">
                    {[{ id: 'base_pvc', label: 'PVC베이스', price: 50000 }, { id: 'base_angle', label: '앵글형베이스', price: 100000 }].map((opt) => (
-                     <div key={opt.id} className={`w-full flex items-center justify-between p-2 rounded-lg bg-white border ${rackCounts[opt.id] > 0 ? `${t.borderActive} ${t.textActive} ring-1 ${t.ringActive}` : 'border-slate-200 text-slate-600'}`}>
+                     <div key={opt.id} className={`w-full flex items-center justify-between p-2.5 rounded-xl border border-slate-200 bg-white transition-all hover:bg-slate-50 ${rackCounts[opt.id] > 0 ? `${t.borderActive} ${t.textActive} ring-1 ${t.ringActive}` : 'text-slate-600'}`}>
                        <div className="flex flex-col flex-1 pr-2"><span className={`font-medium text-sm`}>{opt.label}</span><span className="text-xs font-normal opacity-70 mt-0.5 block">{formatCurrency(opt.price)}원</span></div>
                        <div className="flex items-center gap-3 bg-gray-50 px-2 py-1 rounded-md border border-gray-100 shrink-0"><button onClick={() => updateCount(setRackCounts, opt.id, -1)} className="w-5 h-5 flex items-center justify-center hover:bg-gray-200 rounded text-slate-500">-</button><span className={`font-bold w-4 text-center text-sm`}>{rackCounts[opt.id]}</span><button onClick={() => updateCount(setRackCounts, opt.id, 1)} className="w-5 h-5 flex items-center justify-center hover:bg-gray-200 rounded text-slate-500">+</button></div>
                      </div>
@@ -547,24 +664,41 @@ export default function App() {
              </div>
            </section>
 
-           <section className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 mt-4 transition-all"><h2 className="text-sm font-bold text-slate-400 mb-4 uppercase tracking-wider flex items-center gap-2"><Drill size={16} /> 타공 (벽뚫기)</h2><div className="space-y-3">
-                <div className="bg-slate-50 p-4 rounded-xl flex items-center justify-between"><div className="text-sm text-slate-600 flex flex-col"><span className="font-medium">일반 타공</span><span className="text-xs text-slate-400">30,000원 / 구</span></div><div className="flex items-center gap-3 bg-white px-2 py-1 rounded-lg border border-slate-200"><button onClick={() => setHoleCountGeneral(Math.max(0, holeCountGeneral - 1))} className="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded text-slate-600">-</button><span className={`font-bold text-lg w-6 text-center ${t.textPrimary}`}>{holeCountGeneral}</span><button onClick={() => setHoleCountGeneral(holeCountGeneral + 1)} className="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded text-slate-600">+</button></div></div>
-                <div className="bg-slate-50 p-4 rounded-xl flex items-center justify-between"><div className="text-sm text-slate-600 flex flex-col"><span className="font-medium">난타공 (벽두께 30cm↑)</span><span className="text-xs text-slate-400">50,000원 / 구</span></div><div className="flex items-center gap-3 bg-white px-2 py-1 rounded-lg border border-slate-200"><button onClick={() => setHoleCountDifficult(Math.max(0, holeCountDifficult - 1))} className="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded text-slate-600">-</button><span className={`font-bold text-lg w-6 text-center ${t.textPrimary}`}>{holeCountDifficult}</span><button onClick={() => setHoleCountDifficult(holeCountDifficult + 1)} className="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded text-slate-600">+</button></div></div>
-                <div className="bg-slate-50 p-4 rounded-xl flex items-center justify-between"><div className="text-sm text-slate-600 flex flex-col"><span className="font-medium">특수 타공 (대리석/스텐 등)</span><span className="text-xs text-slate-400">70,000원 / 구</span></div><div className="flex items-center gap-3 bg-white px-2 py-1 rounded-lg border border-slate-200"><button onClick={() => setHoleCountSpecial(Math.max(0, holeCountSpecial - 1))} className="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded text-slate-600">-</button><span className={`font-bold text-lg w-6 text-center ${t.textPrimary}`}>{holeCountSpecial}</span><button onClick={() => setHoleCountSpecial(holeCountSpecial + 1)} className="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded text-slate-600">+</button></div></div>
+           {/* 5. 타공 */}
+           <section className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 mt-4 transition-all"><h2 className="text-sm font-bold text-slate-400 mb-4 uppercase tracking-wider flex items-center gap-2"><Drill size={16} /> 타공 (벽뚫기)</h2><div className="space-y-1.5">
+                <div className="w-full flex items-center justify-between p-2.5 rounded-xl border border-slate-200 bg-white transition-all hover:bg-slate-50"><div className="text-sm text-slate-600 flex flex-col"><span className="font-medium">일반 타공</span><span className="text-xs text-slate-400">30,000원 / 구</span></div><div className="flex items-center gap-3 bg-white px-2 py-1 rounded-lg border border-slate-200"><button onClick={() => setHoleCountGeneral(Math.max(0, holeCountGeneral - 1))} className="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded text-slate-600">-</button><span className={`font-bold text-lg w-6 text-center ${t.textPrimary}`}>{holeCountGeneral}</span><button onClick={() => setHoleCountGeneral(holeCountGeneral + 1)} className="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded text-slate-600">+</button></div></div>
+                <div className="w-full flex items-center justify-between p-2.5 rounded-xl border border-slate-200 bg-white transition-all hover:bg-slate-50"><div className="text-sm text-slate-600 flex flex-col"><span className="font-medium">난타공 (벽두께 30cm↑)</span><span className="text-xs text-slate-400">50,000원 / 구</span></div><div className="flex items-center gap-3 bg-white px-2 py-1 rounded-lg border border-slate-200"><button onClick={() => setHoleCountDifficult(Math.max(0, holeCountDifficult - 1))} className="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded text-slate-600">-</button><span className={`font-bold text-lg w-6 text-center ${t.textPrimary}`}>{holeCountDifficult}</span><button onClick={() => setHoleCountDifficult(holeCountDifficult + 1)} className="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded text-slate-600">+</button></div></div>
+                <div className="w-full flex items-center justify-between p-2.5 rounded-xl border border-slate-200 bg-white transition-all hover:bg-slate-50"><div className="text-sm text-slate-600 flex flex-col"><span className="font-medium">특수 타공 (대리석/스텐 등)</span><span className="text-xs text-slate-400">70,000원 / 구</span></div><div className="flex items-center gap-3 bg-white px-2 py-1 rounded-lg border border-slate-200"><button onClick={() => setHoleCountSpecial(Math.max(0, holeCountSpecial - 1))} className="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded text-slate-600">-</button><span className={`font-bold text-lg w-6 text-center ${t.textPrimary}`}>{holeCountSpecial}</span><button onClick={() => setHoleCountSpecial(holeCountSpecial + 1)} className="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded text-slate-600">+</button></div></div>
              </div></section>
 
+           {/* 6. 전기 */}
            <section className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 mt-4 transition-all">
              <h2 className="text-sm font-bold text-slate-400 mb-4 uppercase tracking-wider flex items-center gap-2"><Zap size={16} /> 전기 공사</h2>
              <div className="space-y-4">
-               <div><div className="flex justify-between items-end mb-2"><span className="text-sm font-medium text-slate-700">전원선 (m당)</span><span className={`${t.textPrimary} font-bold`}>{powerCableLength}m</span></div><div className="flex bg-slate-100 p-1 rounded-lg mb-3"><button onClick={() => setPowerCableType('under40')} className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${powerCableType === 'under40' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500'}`}>40평 이하 (10,000원)</button><button onClick={() => setPowerCableType('over40')} className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${powerCableType === 'over40' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500'}`}>40평 초과 (15,000원)</button></div><div className="flex items-center gap-3"><span className="text-xs text-slate-500 w-12">길이</span><input type="range" min="0" max="50" step="1" value={powerCableLength} onChange={(e) => setPowerCableLength(parseInt(e.target.value))} className={`flex-1 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer ${t.accentColor}`} /><span className="text-sm font-bold w-8 text-right">{powerCableLength}m</span></div></div>
+               <div>
+                  <div className="flex justify-between items-end mb-2">
+                    <span className="text-sm font-medium text-slate-700">전원선 (m당)</span>
+                  </div>
+                  <div className="flex bg-slate-100 p-1 rounded-lg mb-3">
+                    <button onClick={() => setPowerCableType('under40')} className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${powerCableType === 'under40' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500'}`}>40평 이하 (10,000원)</button>
+                    <button onClick={() => setPowerCableType('over40')} className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${powerCableType === 'over40' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500'}`}>40평 초과 (15,000원)</button>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-slate-500 w-10">길이</span>
+                    <div className="flex-1 flex items-center gap-2">
+                        <input type="number" min="0" max="999" value={powerCableLength || ''} onChange={(e) => setPowerCableLength(Math.min(999, Math.max(0, parseInt(e.target.value) || 0)))} className={`w-full p-2 border border-slate-200 rounded-lg text-right focus:outline-none focus:ring-2 ${t.ringActive}`} placeholder="0" />
+                        <span className="text-sm font-bold text-slate-600">m</span>
+                    </div>
+                  </div>
+               </div>
                <div>
                  <div className="text-sm font-medium text-slate-700 mb-3">차단기 설치 (개당)</div>
                  <div className="mb-3">
                    <div className="text-sm font-bold text-slate-600 mb-2 ml-1 flex items-center gap-1"><Zap size={14} className="text-yellow-500 fill-yellow-500" /> 단상 (220V)</div>
                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
-                       <div className="space-y-1">
+                       <div className="space-y-1.5">
                          {[{ id: '1p30a', label: '30A 이하', price: 50000 }, { id: '1p50a', label: '50A 이하', price: 70000 }, { id: 'box_1p', label: '차단기함(PVC)', price: 50000 }, { id: 'connection_1p', label: '단상 전원결속', price: 40000 }].map((opt) => (
-                           <div key={opt.id} className={`w-full flex items-center justify-between p-2 rounded-lg bg-white border ${breakerCounts[opt.id] > 0 ? `${t.borderActive} ${t.textActive} ring-1 ${t.ringActive}` : 'border-slate-200 text-slate-600'}`}>
+                           <div key={opt.id} className={`w-full flex items-center justify-between p-2.5 rounded-xl border border-slate-200 bg-white transition-all hover:bg-slate-50 ${breakerCounts[opt.id] > 0 ? `${t.borderActive} ${t.textActive} ring-1 ${t.ringActive}` : 'text-slate-600'}`}>
                              <div className="flex flex-col flex-1 pr-2"><span className={`font-medium text-sm`}>{opt.label}</span><span className="text-xs font-normal opacity-70 ml-6">{formatCurrency(opt.price)}원</span></div>
                              <div className="flex items-center gap-3 bg-gray-50 px-2 py-1 rounded-md border border-gray-100 shrink-0"><button onClick={() => updateCount(setBreakerCounts, opt.id, -1)} className="w-5 h-5 flex items-center justify-center hover:bg-gray-200 rounded text-slate-500">-</button><span className={`font-bold w-4 text-center text-sm`}>{breakerCounts[opt.id]}</span><button onClick={() => updateCount(setBreakerCounts, opt.id, 1)} className="w-5 h-5 flex items-center justify-center hover:bg-gray-200 rounded text-slate-500">+</button></div>
                            </div>
@@ -575,9 +709,9 @@ export default function App() {
                  <div>
                    <div className="text-sm font-bold text-slate-600 mb-2 ml-1 flex items-center gap-1"><Zap size={14} className="text-red-500 fill-red-500" /> 삼상 (380V)</div>
                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
-                       <div className="space-y-1">
+                       <div className="space-y-1.5">
                          {[{ id: '3p30a', label: '30A 이하', price: 100000 }, { id: '3p50a', label: '50A 이하', price: 150000 }, { id: 'box_3p', label: '차단기함(PVC)', price: 100000 }, { id: 'connection_3p', label: '삼상 전원결속', price: 70000 }].map((opt) => (
-                           <div key={opt.id} className={`w-full flex items-center justify-between p-2 rounded-lg bg-white border ${breakerCounts[opt.id] > 0 ? `${t.borderActive} ${t.textActive} ring-1 ${t.ringActive}` : 'border-slate-200 text-slate-600'}`}>
+                           <div key={opt.id} className={`w-full flex items-center justify-between p-2.5 rounded-xl border border-slate-200 bg-white transition-all hover:bg-slate-50 ${breakerCounts[opt.id] > 0 ? `${t.borderActive} ${t.textActive} ring-1 ${t.ringActive}` : 'text-slate-600'}`}>
                              <div className="flex flex-col flex-1 pr-2"><span className={`font-medium text-sm`}>{opt.label}</span><span className="text-xs font-normal opacity-70 ml-6">{formatCurrency(opt.price)}원</span></div>
                              <div className="flex items-center gap-3 bg-gray-50 px-2 py-1 rounded-md border border-gray-100 shrink-0"><button onClick={() => updateCount(setBreakerCounts, opt.id, -1)} className="w-5 h-5 flex items-center justify-center hover:bg-gray-200 rounded text-slate-500">-</button><span className={`font-bold w-4 text-center text-sm`}>{breakerCounts[opt.id]}</span><button onClick={() => updateCount(setBreakerCounts, opt.id, 1)} className="w-5 h-5 flex items-center justify-center hover:bg-gray-200 rounded text-slate-500">+</button></div>
                            </div>
@@ -589,18 +723,33 @@ export default function App() {
              </div>
            </section>
 
+           {/* 7. 배수 */}
            <section className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 mt-4 transition-all">
              <h2 className="text-sm font-bold text-slate-400 mb-4 uppercase tracking-wider flex items-center gap-2"><Waves size={16} /> 배수 설비</h2>
              <div className="space-y-4">
-               <div><div className="text-sm font-medium text-slate-700 mb-2">배수 펌프 <span className="text-xs text-slate-400 font-normal ml-1">(자연 배수가 불가한 경우)</span></div><div className="space-y-1">{[{ id: 'std_4m', label: '기본형 4m', price: 100000 }, { id: 'std_6m', label: '기본형 6m', price: 120000 }, { id: 'std_8m', label: '기본형 8m', price: 150000 }, { id: 'std_over10', label: '기본형 10m 이상', price: 200000 }, { id: 'low_noise', label: '저소음 (8m 이하)', price: 200000 }, { id: 'own', label: '펌프 보유 (설치비)', price: 70000 }].map((opt) => (<div key={opt.id} className={`w-full flex items-center justify-between p-3 rounded-lg border text-sm transition-all ${drainPumpCounts[opt.id] > 0 ? `${t.borderActive} ${t.bgActive} ring-1 ${t.ringActive}` : 'border-slate-200 bg-white'}`}><div className="flex flex-col flex-1 pr-2"><span className={`font-medium ${drainPumpCounts[opt.id] > 0 ? t.textActive : 'text-slate-600'}`}>{opt.label}</span><span className="text-xs text-slate-400 font-normal">{formatCurrency(opt.price)}원</span></div><div className="flex items-center gap-3 bg-white px-2 py-1 rounded-lg border border-slate-200 shrink-0"><button onClick={() => updateCount(setDrainPumpCounts, opt.id, -1)} className="w-6 h-6 flex items-center justify-center hover:bg-slate-100 rounded text-slate-600">-</button><span className={`font-bold w-4 text-center ${t.textPrimary}`}>{drainPumpCounts[opt.id]}</span><button onClick={() => updateCount(setDrainPumpCounts, opt.id, 1)} className="w-6 h-6 flex items-center justify-center hover:bg-slate-100 rounded text-slate-600">+</button></div></div>))}</div></div>
+               <div><div className="text-sm font-medium text-slate-700 mb-2">배수 펌프 <span className="text-xs text-slate-400 font-normal ml-1">(자연 배수가 불가한 경우)</span></div><div className="space-y-1.5">{[{ id: 'std_4m', label: '기본형 4m', price: 100000 }, { id: 'std_6m', label: '기본형 6m', price: 120000 }, { id: 'std_8m', label: '기본형 8m', price: 150000 }, { id: 'std_over10', label: '기본형 10m 이상', price: 200000 }, { id: 'low_noise', label: '저소음 (8m 이하)', price: 200000 }, { id: 'own', label: '펌프 보유 (설치비)', price: 70000 }].map((opt) => (<div key={opt.id} className={`w-full flex items-center justify-between p-2.5 rounded-xl border border-slate-200 bg-white transition-all hover:bg-slate-50 ${drainPumpCounts[opt.id] > 0 ? `${t.borderActive} ${t.bgActive} ring-1 ${t.ringActive}` : ''}`}><div className="flex flex-col flex-1 pr-2"><span className={`font-medium ${drainPumpCounts[opt.id] > 0 ? t.textActive : 'text-slate-600'}`}>{opt.label}</span><span className="text-xs text-slate-400 font-normal">{formatCurrency(opt.price)}원</span></div><div className="flex items-center gap-3 bg-white px-2 py-1 rounded-lg border border-slate-200 shrink-0"><button onClick={() => updateCount(setDrainPumpCounts, opt.id, -1)} className="w-6 h-6 flex items-center justify-center hover:bg-slate-100 rounded text-slate-600">-</button><span className={`font-bold w-4 text-center ${t.textPrimary}`}>{drainPumpCounts[opt.id]}</span><button onClick={() => updateCount(setDrainPumpCounts, opt.id, 1)} className="w-6 h-6 flex items-center justify-center hover:bg-slate-100 rounded text-slate-600">+</button></div></div>))}</div></div>
                <div className="text-sm font-medium text-slate-700 mt-2">추가 드레인 <span className="text-xs text-slate-400 font-normal">(기본자재 3m 제공)</span></div>
-               <div className="flex items-center gap-3 bg-slate-50 p-3 rounded-lg"><div className="flex flex-col flex-1"><span className="text-xs text-slate-500 font-medium">물호스 (4,000원/m)</span><input type="range" min="0" max="30" step="1" value={drainHoseLength} onChange={(e) => setDrainHoseLength(parseInt(e.target.value))} className={`h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer ${t.accentColor}`} /></div><span className="text-sm font-bold w-12 text-right">{drainHoseLength}m</span></div>
-               <div className="flex items-center gap-3 bg-slate-50 p-3 rounded-lg"><div className="flex flex-col flex-1"><span className="text-xs text-slate-500 font-medium">PVC 드레인 (10,000원/m)</span><input type="range" min="0" max="20" step="1" value={drainPVCLength} onChange={(e) => setDrainPVCLength(parseInt(e.target.value))} className={`h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer ${t.accentColor}`} /></div><span className="text-sm font-bold w-12 text-right">{drainPVCLength}m</span></div>
+               <div className="flex items-center justify-between gap-3 w-full p-2.5 rounded-xl border border-slate-200 bg-white transition-all hover:bg-slate-50">
+                 <span className="text-xs text-slate-500 font-medium">물호스 (4,000원/m)</span>
+                 <div className="flex items-center gap-2">
+                   <input type="number" min="0" max="999" value={drainHoseLength || ''} onChange={(e) => setDrainHoseLength(Math.min(999, Math.max(0, parseInt(e.target.value) || 0)))} className={`w-20 p-1 border border-slate-200 rounded bg-white text-right focus:outline-none focus:ring-2 ${t.ringActive}`} placeholder="0" />
+                   <span className="text-sm font-bold text-slate-600">m</span>
+                 </div>
+               </div>
+               <div className="flex items-center justify-between gap-3 w-full p-2.5 rounded-xl border border-slate-200 bg-white transition-all hover:bg-slate-50">
+                 <span className="text-xs text-slate-500 font-medium">PVC 드레인 (10,000원/m)</span>
+                 <div className="flex items-center gap-2">
+                   <input type="number" min="0" max="999" value={drainPVCLength || ''} onChange={(e) => setDrainPVCLength(Math.min(999, Math.max(0, parseInt(e.target.value) || 0)))} className={`w-20 p-1 border border-slate-200 rounded bg-white text-right focus:outline-none focus:ring-2 ${t.ringActive}`} placeholder="0" />
+                   <span className="text-sm font-bold text-slate-600">m</span>
+                 </div>
+               </div>
              </div>
            </section>
 
-           <section className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 mt-4 transition-all"><h2 className="text-sm font-bold text-slate-400 mb-4 uppercase tracking-wider flex items-center gap-2"><ArrowRight size={16} /> 에어가이드 (바람막이)</h2><div className="bg-slate-50 p-4 rounded-xl flex items-center justify-between"><div className="text-sm text-slate-600">설치 개수 <span className="text-xs text-slate-400">(구당 5만원)</span></div><div className="flex items-center gap-3 bg-white px-2 py-1 rounded-lg border border-slate-200"><button onClick={() => setAirGuideCount(Math.max(0, airGuideCount - 1))} className="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded text-slate-600">-</button><span className={`font-bold text-lg w-6 text-center ${t.textPrimary}`}>{airGuideCount}</span><button onClick={() => setAirGuideCount(airGuideCount + 1)} className="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded text-slate-600">+</button></div></div></section>
+           {/* 8. 에어가이드 */}
+           <section className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 mt-4 transition-all"><h2 className="text-sm font-bold text-slate-400 mb-4 uppercase tracking-wider flex items-center gap-2"><ArrowRight size={16} /> 에어가이드 (바람막이)</h2><div className="w-full flex items-center justify-between p-2.5 rounded-xl border border-slate-200 bg-white transition-all hover:bg-slate-50"><div className="text-sm text-slate-600">설치 개수 <span className="text-xs text-slate-400">(구당 5만원)</span></div><div className="flex items-center gap-3 bg-white px-2 py-1 rounded-lg border border-slate-200"><button onClick={() => setAirGuideCount(Math.max(0, airGuideCount - 1))} className="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded text-slate-600">-</button><span className={`font-bold text-lg w-6 text-center ${t.textPrimary}`}>{airGuideCount}</span><button onClick={() => setAirGuideCount(airGuideCount + 1)} className="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded text-slate-600">+</button></div></div></section>
            
+           {/* 9. 철거 */}
            <section className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 mt-4 transition-all">
              <h2 className="text-sm font-bold text-slate-400 mb-4 uppercase tracking-wider flex items-center gap-2">
                <Trash2 size={16} /> 
@@ -608,17 +757,18 @@ export default function App() {
                {acMode === 'used' && <span className="text-xs ml-1 font-normal text-slate-500">(철거비+이동운반비)</span>}
              </h2>
              
-             <div className="space-y-1">
+             <div className="space-y-1.5">
                {/* 철거 옵션들 */}
                {[{ id: 'none', label: '철거 없음', price: 0 }, { id: 'basic', label: '기본철거 (실외기 바닥)', price: 0, text: '수거조건무료' }, { id: 'wall', label: '벽걸이형 철거', price: 30000 }, { id: 'stand', label: '스탠드형 철거', price: 50000 }, { id: 'large', label: '중대형/천장형 철거', price: 100000 }].filter(opt => !(acMode === 'used' && opt.id === 'basic')).map((opt) => (
-                 <button key={opt.id} onClick={() => setRemovalType(opt.id)} className={`w-full flex items-center justify-between p-3 rounded-lg border text-sm transition-all text-left ${removalType === opt.id ? `${t.borderActive} ${t.bgActive} ${t.textActive} ring-1 ${t.ringActive}` : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-600'}`}><div className="flex items-center gap-2 flex-1"><div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors shrink-0 ${removalType === opt.id ? `${t.checkIcon}` : 'border-slate-300 bg-white'}`}>{removalType === opt.id && <div className="w-2 h-2 bg-white rounded-full" />}</div><span className="font-medium">{opt.label}</span></div><span className="font-bold shrink-0">{opt.text ? opt.text : `${formatCurrency(opt.price)}원`}</span></button>
+                 <button key={opt.id} onClick={() => setRemovalType(opt.id)} className={`w-full flex items-center justify-between p-2.5 rounded-xl border border-slate-200 bg-white transition-all text-left hover:bg-slate-50 ${removalType === opt.id ? `${t.borderActive} ${t.bgActive} ${t.textActive} ring-1 ${t.ringActive}` : 'text-slate-600'}`}><div className="flex items-center gap-2 flex-1"><div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors shrink-0 ${removalType === opt.id ? `${t.checkIcon}` : 'border-slate-300 bg-white'}`}>{removalType === opt.id && <div className="w-2 h-2 bg-white rounded-full" />}</div><span className="font-medium">{opt.label}</span></div><span className="font-bold shrink-0">{opt.text ? opt.text : `${formatCurrency(opt.price)}원`}</span></button>
                ))}
                {acMode === 'used' && (
                  <div className="mt-4 bg-slate-50 p-3 rounded-xl border border-slate-200 animate-in fade-in slide-in-from-top-2">
                    <div className="text-sm font-bold text-slate-700 mb-2 ml-1">권역이동운반비</div>
-                   <div className="space-y-1">
+                   <div className="space-y-1.5">
                       {[{ id: 'none', label: '이동 없음' }, { id: 'same_dong', label: '같은동(리) 이동시 (무료)' }, { id: 'same_gu', label: '같은구(읍,면) 이동시 (3만원)' }, { id: 'under_30km', label: '30km 이하 (5만원)' }, { id: 'over_30km', label: '30km 이상 (별도협의)' }].map(opt => (
-                        <div key={opt.id} onClick={() => setTransportMoveType(opt.id)} className={`w-full flex items-center justify-between p-3 rounded-lg border text-sm transition-all cursor-pointer ${transportMoveType === opt.id ? `${t.borderActive} ${t.bgActive} ring-1 ${t.ringActive}` : 'border-slate-200 bg-white'}`}><div className="flex items-center gap-2"><div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors shrink-0 ${transportMoveType === opt.id ? `${t.checkIcon}` : 'border-slate-300'}`}>{transportMoveType === opt.id && <Check size={10} className="text-white" />}</div><span className={`font-medium ${transportMoveType === opt.id ? t.textActive : 'text-slate-600'}`}>{opt.label}</span></div></div>
+                        // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
+                        <div key={opt.id} onClick={() => setTransportMoveType(opt.id)} className={`w-full flex items-center justify-between p-2.5 rounded-xl border border-slate-200 bg-white transition-all cursor-pointer hover:bg-slate-50 ${transportMoveType === opt.id ? `${t.borderActive} ${t.bgActive} ring-1 ${t.ringActive}` : ''}`}><div className="flex items-center gap-2"><div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors shrink-0 ${transportMoveType === opt.id ? `${t.checkIcon}` : 'border-slate-300'}`}>{transportMoveType === opt.id && <Check size={10} className="text-white" />}</div><span className={`font-medium ${transportMoveType === opt.id ? t.textActive : 'text-slate-600'}`}>{opt.label}</span></div></div>
                       ))}
                    </div>
                  </div>
@@ -626,22 +776,88 @@ export default function App() {
              </div>
            </section>
 
-           <section className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 mt-4 transition-all"><h2 className="text-sm font-bold text-slate-400 mb-4 uppercase tracking-wider flex items-center gap-2"><Truck size={16} /> <span>운반비</span><span className="text-[11px] font-normal text-slate-400 ml-1 tracking-normal">(엘리베이터 없는 건물 3층부터 적용)</span></h2><div className="space-y-1">{[{ id: 'none', label: '해당 없음', price: 0 }, { id: 'wall_low', label: '층간운반 (벽걸이 3층이하)', price: 30000 }, { id: 'stand_low', label: '층간운반 (스탠드 3층이하)', price: 50000 }, { id: 'high_floor', label: '층간운반 (벽/스 3층초과)', price: 100000 }, { id: 'manual_100m', label: '도수운반 (100m이상)', price: 30000 }].map((opt) => (<button key={opt.id} onClick={() => setTransportType(opt.id)} className={`w-full flex items-center justify-between p-3 rounded-lg border text-sm transition-all text-left ${transportType === opt.id ? `${t.borderActive} ${t.bgActive} ${t.textActive} ring-1 ${t.ringActive}` : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-600'}`}><div className="flex items-center gap-2 flex-1"><div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors shrink-0 ${transportType === opt.id ? `${t.checkIcon}` : 'border-slate-300 bg-white'}`}>{transportType === opt.id && <div className="w-2 h-2 bg-white rounded-full" />}</div><span className="font-medium">{opt.label}</span></div><span className="font-bold shrink-0">{opt.price > 0 ? `${formatCurrency(opt.price)}원` : '0원'}</span></button>))}</div></section>
-           <section className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 mt-4 transition-all"><h2 className="text-sm font-bold text-slate-400 mb-4 uppercase tracking-wider flex items-center gap-2"><HardHat size={16} /> 배관 작업</h2><div className="space-y-2"><button onClick={() => setIsPrePiping(!isPrePiping)} className={`w-full flex items-center justify-between p-3 rounded-lg border text-sm transition-all text-left ${isPrePiping ? `${t.borderActive} ${t.bgActive} ${t.textActive} ring-1 ${t.ringActive}` : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-600'}`}><div className="flex items-center gap-2 flex-1"><div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors shrink-0 ${isPrePiping ? `${t.checkIcon}` : 'border-slate-300 bg-white'}`}>{isPrePiping && <div className="w-2 h-2 bg-white rounded-full" />}</div><div className="flex flex-col items-start text-left"><span className="font-medium">선배관작업</span><span className="text-xs text-slate-400 font-normal">미리 배관 작업 필요시 출장비</span></div></div><span className="font-bold whitespace-nowrap shrink-0">100,000원</span></button><button onClick={() => setIsCeilingWork(!isCeilingWork)} className={`w-full flex items-center justify-between p-3 rounded-lg border text-sm transition-all text-left ${isCeilingWork ? `${t.borderActive} ${t.bgActive} ${t.textActive} ring-1 ${t.ringActive}` : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-600'}`}><div className="flex items-center gap-2 flex-1"><div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors shrink-0 ${isCeilingWork ? `${t.checkIcon}` : 'border-slate-300 bg-white'}`}>{isCeilingWork && <div className="w-2 h-2 bg-white rounded-full" />}</div><div className="flex flex-col items-start text-left"><span className="font-medium">천장작업</span><span className="text-xs text-slate-400 font-normal">천장 안으로 배관 작업시</span></div></div><span className="font-bold whitespace-nowrap shrink-0">100,000원</span></button><div className={`w-full flex items-center justify-between p-3 rounded-lg border text-sm transition-all text-left ${floorSleeveCount > 0 ? `${t.borderActive} ${t.bgActive} ring-1 ${t.ringActive}` : 'border-slate-200 bg-white'}`}><div className="flex items-center gap-3"><div className="flex flex-col"><span className={`font-medium ${floorSleeveCount > 0 ? t.textActive : 'text-slate-600'}`}>바닥슬리브</span><span className="text-xs text-slate-400 font-normal">바닥 관로로 배관 작업시</span><span className="text-[10px] text-slate-400 mt-0.5">대당 50,000원</span></div></div><div className="flex items-center gap-3 bg-white px-2 py-1 rounded-lg border border-slate-200 shrink-0"><button onClick={() => setFloorSleeveCount(Math.max(0, floorSleeveCount - 1))} className="w-6 h-6 flex items-center justify-center hover:bg-slate-100 rounded text-slate-600">-</button><span className={`font-bold w-4 text-center ${t.textPrimary}`}>{floorSleeveCount}</span><button onClick={() => setFloorSleeveCount(floorSleeveCount + 1)} className="w-6 h-6 flex items-center justify-center hover:bg-slate-100 rounded text-slate-600">+</button></div></div><div className={`w-full flex items-center justify-between p-3 rounded-lg border text-sm transition-all text-left ${inspectionHoleCount > 0 ? `${t.borderActive} ${t.bgActive} ring-1 ${t.ringActive}` : 'border-slate-200 bg-white'}`}><div className="flex items-center gap-3"><div className="flex flex-col"><span className={`font-medium ${inspectionHoleCount > 0 ? t.textActive : 'text-slate-600'}`}>점검구</span><span className="text-xs text-slate-400 font-normal">구당 100,000원</span></div></div><div className="flex items-center gap-3 bg-white px-2 py-1 rounded-lg border border-slate-200 shrink-0"><button onClick={() => setInspectionHoleCount(Math.max(0, inspectionHoleCount - 1))} className="w-6 h-6 flex items-center justify-center hover:bg-slate-100 rounded text-slate-600">-</button><span className={`font-bold w-4 text-center ${t.textPrimary}`}>{inspectionHoleCount}</span><button onClick={() => setInspectionHoleCount(inspectionHoleCount + 1)} className="w-6 h-6 flex items-center justify-center hover:bg-slate-100 rounded text-slate-600">+</button></div></div></div></section>
+           {/* 10. 운반비 */}
+           <section className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 mt-4 transition-all"><h2 className="text-sm font-bold text-slate-400 mb-4 uppercase tracking-wider flex items-center gap-2"><Truck size={16} /> <span>운반비</span><span className="text-[11px] font-normal text-slate-400 ml-1 tracking-normal">(엘리베이터 없는 건물 3층부터 적용)</span></h2><div className="space-y-1.5">{[{ id: 'none', label: '해당 없음', price: 0 }, { id: 'wall_low', label: '층간운반 (벽걸이 3층이하)', price: 30000 }, { id: 'stand_low', label: '층간운반 (스탠드 3층이하)', price: 50000 }, { id: 'high_floor', label: '층간운반 (벽/스 3층초과)', price: 100000 }, { id: 'manual_100m', label: '도수운반 (100m이상)', price: 30000 }].map((opt) => (<button key={opt.id} onClick={() => setTransportType(opt.id)} className={`w-full flex items-center justify-between p-2.5 rounded-xl border border-slate-200 bg-white transition-all text-left hover:bg-slate-50 ${transportType === opt.id ? `${t.borderActive} ${t.bgActive} ${t.textActive} ring-1 ${t.ringActive}` : 'text-slate-600'}`}><div className="flex items-center gap-2 flex-1"><div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors shrink-0 ${transportType === opt.id ? `${t.checkIcon}` : 'border-slate-300 bg-white'}`}>{transportType === opt.id && <div className="w-2 h-2 bg-white rounded-full" />}</div><span className="font-medium">{opt.label}</span></div><span className="font-bold shrink-0">{opt.price > 0 ? `${formatCurrency(opt.price)}원` : '0원'}</span></button>))}</div></section>
+           
+           {/* 11. 배관 작업 */}
+           <section className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 mt-4 transition-all"><h2 className="text-sm font-bold text-slate-400 mb-4 uppercase tracking-wider flex items-center gap-2"><HardHat size={16} /> 배관 작업</h2><div className="space-y-1.5"><button onClick={() => setIsPrePiping(!isPrePiping)} className={`w-full flex items-center justify-between p-2.5 rounded-xl border border-slate-200 bg-white transition-all text-left hover:bg-slate-50 ${isPrePiping ? `${t.borderActive} ${t.bgActive} ${t.textActive} ring-1 ${t.ringActive}` : 'text-slate-600'}`}><div className="flex items-center gap-2 flex-1"><div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors shrink-0 ${isPrePiping ? `${t.checkIcon}` : 'border-slate-300 bg-white'}`}>{isPrePiping && <div className="w-2 h-2 bg-white rounded-full" />}</div><div className="flex flex-col items-start text-left"><span className="font-medium">선배관작업</span><span className="text-xs text-slate-400 font-normal">미리 배관 작업 필요시 출장비</span></div></div><span className="font-bold whitespace-nowrap shrink-0">100,000원</span></button><button onClick={() => setIsCeilingWork(!isCeilingWork)} className={`w-full flex items-center justify-between p-2.5 rounded-xl border border-slate-200 bg-white transition-all text-left hover:bg-slate-50 ${isCeilingWork ? `${t.borderActive} ${t.bgActive} ${t.textActive} ring-1 ${t.ringActive}` : 'text-slate-600'}`}><div className="flex items-center gap-2 flex-1"><div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors shrink-0 ${isCeilingWork ? `${t.checkIcon}` : 'border-slate-300 bg-white'}`}>{isCeilingWork && <div className="w-2 h-2 bg-white rounded-full" />}</div><div className="flex flex-col items-start text-left"><span className="font-medium">천장작업</span><span className="text-xs text-slate-400 font-normal">천장 안으로 배관 작업시</span></div></div><span className="font-bold whitespace-nowrap shrink-0">100,000원</span></button><div className={`w-full flex items-center justify-between p-2.5 rounded-xl border border-slate-200 bg-white transition-all text-left hover:bg-slate-50 ${floorSleeveCount > 0 ? `${t.borderActive} ${t.bgActive} ring-1 ${t.ringActive}` : ''}`}><div className="flex items-center gap-3"><div className="flex flex-col"><span className={`font-medium ${floorSleeveCount > 0 ? t.textActive : 'text-slate-600'}`}>바닥슬리브</span><span className="text-xs text-slate-400 font-normal">바닥 관로로 배관 작업시</span><span className="text-[10px] text-slate-400 mt-0.5">대당 50,000원</span></div></div><div className="flex items-center gap-3 bg-white px-2 py-1 rounded-lg border border-slate-200 shrink-0"><button onClick={() => setFloorSleeveCount(Math.max(0, floorSleeveCount - 1))} className="w-6 h-6 flex items-center justify-center hover:bg-slate-100 rounded text-slate-600">-</button><span className={`font-bold w-4 text-center ${t.textPrimary}`}>{floorSleeveCount}</span><button onClick={() => setFloorSleeveCount(floorSleeveCount + 1)} className="w-6 h-6 flex items-center justify-center hover:bg-slate-100 rounded text-slate-600">+</button></div></div><div className={`w-full flex items-center justify-between p-2.5 rounded-xl border border-slate-200 bg-white transition-all text-left hover:bg-slate-50 ${inspectionHoleCount > 0 ? `${t.borderActive} ${t.bgActive} ring-1 ${t.ringActive}` : ''}`}><div className="flex items-center gap-3"><div className="flex flex-col"><span className={`font-medium ${inspectionHoleCount > 0 ? t.textActive : 'text-slate-600'}`}>점검구</span><span className="text-xs text-slate-400 font-normal">구당 100,000원</span></div></div><div className="flex items-center gap-3 bg-white px-2 py-1 rounded-lg border border-slate-200 shrink-0"><button onClick={() => setInspectionHoleCount(Math.max(0, inspectionHoleCount - 1))} className="w-6 h-6 flex items-center justify-center hover:bg-slate-100 rounded text-slate-600">-</button><span className={`font-bold w-4 text-center ${t.textPrimary}`}>{inspectionHoleCount}</span><button onClick={() => setInspectionHoleCount(inspectionHoleCount + 1)} className="w-6 h-6 flex items-center justify-center hover:bg-slate-100 rounded text-slate-600">+</button></div></div></div></section>
 
-            {/* 12. 특수작업차 & 유료주차 (Information Only) */}
-            <section className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 mt-4">
+           {/* 12. 기타 작업 (직접 입력) */}
+           <section className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 mt-4 transition-all">
+             <h2 className="text-sm font-bold text-slate-400 mb-2 uppercase tracking-wider flex items-center gap-2">
+               <Plus size={16} /> 기타작업
+             </h2>
+             <div className="text-xs text-slate-600 leading-relaxed mb-4">
+               위 목록에는 없지만 현장 설치 환경에 따른 추가 작업비와 인건비가 발생 될 수 있습니다. 방문 설치팀과 협의 바랍니다.
+             </div>
+             <div className="space-y-2">
+               {/* Item 1 */}
+               <div className="flex gap-2 items-center">
+                 <input 
+                   type="text" 
+                   placeholder="항목명 (예: 지역배송비)" 
+                   value={customItem1Name}
+                   onChange={(e) => setCustomItem1Name(e.target.value)}
+                   className="flex-1 p-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                 />
+                 <div className="flex items-center w-32 relative">
+                   <input 
+                     type="text" 
+                     placeholder="0" 
+                     value={customItem1Price > 0 ? customItem1Price.toLocaleString() : ''}
+                     onChange={(e) => {
+                       const val = e.target.value.replace(/,/g, '');
+                       if (!isNaN(val)) setCustomItem1Price(Number(val));
+                     }}
+                     onKeyDown={(e) => {
+                       if (e.key === 'Enter') {
+                         e.target.blur();
+                       }
+                     }}
+                     className="w-full p-2.5 pr-8 border border-slate-200 rounded-xl text-sm text-right focus:outline-none focus:ring-2 focus:ring-blue-500"
+                   />
+                   <span className="absolute right-3 text-xs text-slate-400 font-bold">원</span>
+                 </div>
+               </div>
+               {/* Item 2 */}
+               <div className="flex gap-2 items-center">
+                 <input 
+                   type="text" 
+                   placeholder="항목명" 
+                   value={customItem2Name}
+                   onChange={(e) => setCustomItem2Name(e.target.value)}
+                   className="flex-1 p-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                 />
+                 <div className="flex items-center w-32 relative">
+                   <input 
+                     type="text" 
+                     placeholder="0" 
+                     value={customItem2Price > 0 ? customItem2Price.toLocaleString() : ''}
+                     onChange={(e) => {
+                       const val = e.target.value.replace(/,/g, '');
+                       if (!isNaN(val)) setCustomItem2Price(Number(val));
+                     }}
+                     onKeyDown={(e) => {
+                       if (e.key === 'Enter') {
+                         e.target.blur();
+                       }
+                     }}
+                     className="w-full p-2.5 pr-8 border border-slate-200 rounded-xl text-sm text-right focus:outline-none focus:ring-2 focus:ring-blue-500"
+                   />
+                   <span className="absolute right-3 text-xs text-slate-400 font-bold">원</span>
+                 </div>
+               </div>
+             </div>
+           </section>
+
+            {/* 13. 특수작업차 & 유료주차 (Information Only) */}
+            <section className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 mt-4 mb-20">
               <h2 className="text-sm font-bold text-slate-400 mb-4 uppercase tracking-wider flex items-center gap-2"><Truck size={16} /> 특수작업차 & 유료주차</h2>
               <div className="text-xs text-slate-600 space-y-2 leading-relaxed">
                 <p>* 제품의 직접 운반이 어려워 특수 차량이 필요한 경우 사용 비용은 고객님 부담입니다. (사다리차 등)</p>
                 <p>* 특수 차량에 탑승하여 작업이 필요한 경우 별도 위험 수당이 추가 발생됩니다.</p>
                 <p>* 주차 공간이 없어 유료주차장 사용시 주차비는 고객님 부담입니다.</p>
               </div>
-            </section>
-
-             <section className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 mt-4 mb-20">
-              <h2 className="text-sm font-bold text-slate-400 mb-4 uppercase tracking-wider flex items-center gap-2"><Info size={16} /> 기타작업</h2>
-              <div className="text-xs text-slate-600 leading-relaxed">위 목록에는 없지만 현장 설치 환경에 따른 추가 작업비와 인건비가 발생 될 수 있습니다. 방문 설치팀과 협의 바랍니다.</div>
             </section>
         </main>
       </div>
@@ -735,6 +951,7 @@ export default function App() {
                     </div>
                     <div className="text-right">
                         <p className="text-xl font-bold mt-4">총 견적: {formatCurrency(totalPrice)}원</p>
+                        <p className="text-xs text-black font-normal mt-1">(부가세별도)</p>
                         {isNegotiable && <p className="text-xs text-red-500 font-bold">* 별도 협의 항목 포함</p>}
                     </div>
                 </div>
@@ -904,8 +1121,25 @@ export default function App() {
                                 <td className="border border-gray-400 p-2 text-right">{formatCurrency((floorSleeveCount * 50000) + (inspectionHoleCount * 100000))}원</td>
                             </tr>
                         )}
+                        {/* 기타 (직접 입력) */}
+                        {customItem1Name && (
+                            <tr>
+                                <td className="border border-gray-400 p-2">{customItem1Name}</td>
+                                <td className="border border-gray-400 p-2 text-right">1식</td>
+                                <td className="border border-gray-400 p-2 text-right">{formatCurrency(customItem1Price)}원</td>
+                            </tr>
+                        )}
+                        {customItem2Name && (
+                            <tr>
+                                <td className="border border-gray-400 p-2">{customItem2Name}</td>
+                                <td className="border border-gray-400 p-2 text-right">1식</td>
+                                <td className="border border-gray-400 p-2 text-right">{formatCurrency(customItem2Price)}원</td>
+                            </tr>
+                        )}
                         <tr className="bg-gray-200 font-bold">
-                            <td className="border border-gray-400 p-2 text-center" colSpan="2">총 합계</td>
+                            <td className="border border-gray-400 p-2 text-center" colSpan="2">
+                              총 합계 <span className="text-black text-xs font-normal">(부가세별도)</span>
+                            </td>
                             <td className="border border-gray-400 p-2 text-right text-lg">{formatCurrency(totalPrice)}원</td>
                         </tr>
                     </tbody>
@@ -1102,14 +1336,30 @@ export default function App() {
                           </tr>
                       )}
                       {(floorSleeveCount > 0 || inspectionHoleCount > 0) && (
-                            <tr>
+                          <tr>
                               <td className="border border-gray-400 p-2">슬리브/점검구</td>
                               <td className="border border-gray-400 p-2 text-right">{floorSleeveCount + inspectionHoleCount}개</td>
                               <td className="border border-gray-400 p-2 text-right">{formatCurrency((floorSleeveCount * 50000) + (inspectionHoleCount * 100000))}원</td>
                           </tr>
                       )}
+                      {customItem1Name && (
+                          <tr>
+                              <td className="border border-gray-400 p-2">{customItem1Name}</td>
+                              <td className="border border-gray-400 p-2 text-right">1식</td>
+                              <td className="border border-gray-400 p-2 text-right">{formatCurrency(customItem1Price)}원</td>
+                          </tr>
+                      )}
+                      {customItem2Name && (
+                          <tr>
+                              <td className="border border-gray-400 p-2">{customItem2Name}</td>
+                              <td className="border border-gray-400 p-2 text-right">1식</td>
+                              <td className="border border-gray-400 p-2 text-right">{formatCurrency(customItem2Price)}원</td>
+                          </tr>
+                      )}
                   <tr className="bg-gray-200 font-bold">
-                      <td className="border border-gray-400 p-2 text-center" colSpan="2">총 합계</td>
+                      <td className="border border-gray-400 p-2 text-center" colSpan="2">
+                        총 합계 <span className="text-black text-xs font-normal">(부가세별도)</span>
+                      </td>
                       <td className="border border-gray-400 p-2 text-right text-lg">{formatCurrency(totalPrice)}원</td>
                   </tr>
               </tbody>
