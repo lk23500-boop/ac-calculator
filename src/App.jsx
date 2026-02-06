@@ -7,27 +7,26 @@ import {
   Wrench, 
   Snowflake, 
   RotateCcw, 
-  CheckCircle2,
-  AlertCircle,
-  Home,
-  Flame,
-  ArrowRight,
-  Droplets,
-  Zap,
-  Waves,
-  Trash2,
-  Truck,
-  HardHat,
-  Recycle,
-  Info,
-  FileText,
-  Copy,
-  Check,
-  Link,
-  Printer,
-  X,
+  CheckCircle2, 
+  AlertCircle, 
+  Home, 
+  Flame, 
+  ArrowRight, 
+  Droplets, 
+  Zap, 
+  Waves, 
+  Trash2, 
+  Truck, 
+  HardHat, 
+  Recycle, 
+  FileText, 
+  Copy, 
+  Check, 
+  Link, 
+  Printer, 
+  X, 
   Plus,
-  Lock
+  Hammer
 } from 'lucide-react';
 
 export default function App() {
@@ -36,75 +35,69 @@ export default function App() {
   const [acType, setAcType] = useState('wall'); 
   const [acCount, setAcCount] = useState(1); 
   const [installType, setInstallType] = useState('general'); 
-  
+   
   const [pipeLength, setPipeLength] = useState(0); 
   const [pipeLengthWall, setPipeLengthWall] = useState(0); 
-  
+   
   const [buriedCount, setBuriedCount] = useState(1);
 
   const [holeCountGeneral, setHoleCountGeneral] = useState(0); 
   const [holeCountDifficult, setHoleCountDifficult] = useState(0); 
   const [holeCountSpecial, setHoleCountSpecial] = useState(0); 
+  const [holeCountBeam, setHoleCountBeam] = useState(0); 
 
   const [specialPipeLength, setSpecialPipeLength] = useState(0); 
-  
+   
   const [rackCounts, setRackCounts] = useState({
-    new_900: 0, new_1000: 0, new_1100: 0, new_dual: 0, new_custom: 0,
+    new_900: 0, new_1000: 0, new_1100: 0, new_1200: 0, new_dual: 0, new_custom: 0, 
     exist_small: 0, exist_large: 0,
     danger_small: 0, danger_medium: 0, danger_large: 0,
-    base_pvc: 0, base_angle: 0
+    base_pvc: 0, base_angle: 0, base_owned: 0 
   });
-
-  // 호환성 유지용 상태
-  const [rackType, setRackType] = useState('none'); 
-  const [newRackSize, setNewRackSize] = useState('size900'); 
-  const [existRackSize, setExistRackSize] = useState('small');
-  const [dangerSize, setDangerSize] = useState('small');
-  const [baseType, setBaseType] = useState('pvc');
 
   // 냉매 옵션 상태
   const [gasCounts, setGasCounts] = useState({
     cool_under5: 0, cool_over5: 0, heat_under5: 0, heat_over5: 0, over10: 0
   });
-  const [gasOption, setGasOption] = useState('none'); 
 
   const [powerCableType, setPowerCableType] = useState('under40'); 
   const [powerCableLength, setPowerCableLength] = useState(0); 
-  
+   
   // 차단기 수량 관리
   const [breakerCounts, setBreakerCounts] = useState({
     '1p30a': 0, '1p50a': 0, '3p30a': 0, '3p50a': 0, 
     'box_1p': 0, 'box_3p': 0, 
     'connection_1p': 0, 'connection_3p': 0
   });
-  const [breakerType, setBreakerType] = useState('none'); 
 
   // 배수 펌프 수량 관리
   const [drainPumpCounts, setDrainPumpCounts] = useState({
     'std_4m': 0, 'std_6m': 0, 'std_8m': 0, 'std_over10': 0, 'low_noise': 0, 'own': 0
   });
-  const [drainPump, setDrainPump] = useState('none'); 
   const [drainHoseLength, setDrainHoseLength] = useState(0); 
   const [drainPVCLength, setDrainPVCLength] = useState(0); 
 
   const [removalType, setRemovalType] = useState('none');
-  
+   
   // 권역이동운반비 상태
   const [transportMoveType, setTransportMoveType] = useState('none');
   const [transportType, setTransportType] = useState('none');
 
   const [airGuideCount, setAirGuideCount] = useState(0); 
-  
+   
   const [isCeilingWork, setIsCeilingWork] = useState(false); 
   const [floorSleeveCount, setFloorSleeveCount] = useState(0); 
   const [inspectionHoleCount, setInspectionHoleCount] = useState(0); 
   const [isPrePiping, setIsPrePiping] = useState(false); 
 
+  // 동배관 교체 상태
+  const [copperPipeCounts, setCopperPipeCounts] = useState({ wall: 0, stand: 0 });
+
   // 스마트링크 상태
   const [smartLinkCount, setSmartLinkCount] = useState(0);
   const [isSmartLink, setIsSmartLink] = useState(false); 
 
-  // --- [NEW] 기타 작업 직접 입력 상태 ---
+  // --- 기타 작업 직접 입력 상태 ---
   const [customItem1Name, setCustomItem1Name] = useState('');
   const [customItem1Price, setCustomItem1Price] = useState(0);
   const [customItem2Name, setCustomItem2Name] = useState('');
@@ -118,14 +111,11 @@ export default function App() {
     others: 0
   });
   const [isNegotiable, setIsNegotiable] = useState(false); 
-  
+   
   const [copySuccess, setCopySuccess] = useState(false);
   const [showReceiptModal, setShowReceiptModal] = useState(false);
-  
+   
   const today = new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' });
-
-  // 모바일 여부 감지
-  const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
 
   // --- 테마 설정 ---
   const theme = {
@@ -185,30 +175,29 @@ export default function App() {
   const AC_TYPES = {
     cooling: [
       { id: 'wall', label: '벽걸이', pipePrice: 20000 },
-      { id: 'stand', label: '스탠드', pipePrice: 22000 },
+      { id: 'stand', label: '스탠드', pipePrice: 25000 },
       { id: '2in1', label: '2in1', pipePrice: 0 }, 
-      { id: 'allinone', label: '올인원(벽)', pipePrice: 22000 },
-      { id: 'commercial', label: '업소용', pipePrice: 27000 },
+      { id: 'allinone', label: '올인원(벽)', pipePrice: 25000 },
+      { id: 'commercial', label: '업소용', pipePrice: 30000 },
       { id: 'large', label: '대형(40평 초과)', pipePrice: 40000 },
-      { id: 'ceiling', label: '천장형', pipePrice: 30000 },
+      { id: 'ceiling', label: '천장형', pipePrice: 35000 },
     ],
     heating: [
-      { id: 'wall', label: '벽걸이', pipePrice: 22000 },
-      { id: 'stand', label: '스탠드', pipePrice: 27000 },
-      { id: 'allinone', label: '올인원(벽)', pipePrice: 22000 },
+      { id: 'wall', label: '벽걸이', pipePrice: 25000 },
+      { id: 'stand', label: '스탠드', pipePrice: 30000 },
+      { id: 'allinone', label: '올인원(벽)', pipePrice: 25000 },
       { id: 'large', label: '대형(40평 초과)', pipePrice: 40000 },
-      { id: 'ceiling', label: '천장형', pipePrice: 30000 },
+      { id: 'ceiling', label: '천장형', pipePrice: 35000 },
     ],
     used: [
       { id: 'wall_cool', label: '벽걸이(냉방)', pipePrice: 20000 },
-      { id: 'wall_heat', label: '벽걸이(냉난방)', pipePrice: 22000 },
-      { id: 'stand_home', label: '스탠드(가정용)', pipePrice: 22000 },
-      { id: 'stand_comm', label: '스탠드(업소용)', pipePrice: 27000 },
+      { id: 'wall_heat', label: '벽걸이(냉난방)', pipePrice: 25000 },
+      { id: 'stand_home', label: '스탠드(가정용)', pipePrice: 25000 },
+      { id: 'stand_comm', label: '스탠드(업소용)', pipePrice: 30000 },
       { id: '2in1', label: '2in1(벽걸이/스탠드)', pipePrice: 0 }, 
-      { id: 'allinone_cool', label: '올인원(벽/냉방)', pipePrice: 22000 },
-      { id: 'allinone_heat', label: '올인원(벽/냉난방)', pipePrice: 22000 },
+      { id: 'allinone', label: '올인원(벽)', pipePrice: 25000 },
       { id: 'large', label: '대형(40평 초과)', pipePrice: 40000 },
-      { id: 'ceiling', label: '천장형', pipePrice: 30000 },
+      { id: 'ceiling', label: '천장형', pipePrice: 35000 },
     ]
   };
 
@@ -217,22 +206,23 @@ export default function App() {
     base: { 
       cooling: { wall: 120000, stand: 150000, '2in1': 200000, allinone: 150000, commercial: 600000, large: 750000, ceiling: 600000 },
       heating: { wall: 300000, stand: 600000, allinone: 150000, large: 750000, ceiling: 600000 },
-      used: { wall_cool: 150000, wall_heat: 170000, stand_home: 180000, stand_comm: 230000, '2in1': 280000, allinone_cool: 150000, allinone_heat: 200000, large: 500000, ceiling: 600000 }
+      used: { wall_cool: 150000, wall_heat: 170000, stand_home: 180000, stand_comm: 230000, '2in1': 280000, allinone: 150000, large: 500000, ceiling: 600000 }
     },
     pipePerMeter: { 
-      cooling: { wall: 20000, stand: 22000, '2in1_wall': 20000, '2in1_stand': 22000 },
-      heating: { wall: 22000, stand: 27000, '2in1_wall': 22000, '2in1_stand': 25000 },
-      used: { wall_cool: 20000, wall_heat: 22000, stand_home: 22000, stand_comm: 27000, '2in1_wall': 20000, '2in1_stand': 22000, allinone_cool: 22000, allinone_heat: 22000, large: 40000, ceiling: 30000 }
+      cooling: { wall: 20000, stand: 25000, '2in1_wall': 20000, '2in1_stand': 25000 },
+      heating: { wall: 25000, stand: 30000, '2in1_wall': 25000, '2in1_stand': 30000 },
+      used: { wall_cool: 20000, wall_heat: 25000, stand_home: 25000, stand_comm: 30000, '2in1_wall': 20000, '2in1_stand': 25000, allinone: 25000, large: 40000, ceiling: 35000 }
     },
     buried: { base: 100000 },
-    options: { holeGeneral: 30000, holeDifficult: 50000, holeSpecial: 70000, specialPipe: 30000, airGuide: 50000, ceilingWork: 100000, floorSleeve: 50000, inspectionHole: 100000, prePiping: 100000, smartLink: 30000 },
-    rack: { new_900: 110000, new_1000: 150000, new_1100: 200000, new_dual: 180000, new_custom: 0, exist_small: 70000, exist_large: 90000, danger_small: 30000, danger_medium: 50000, danger_large: 100000, base_pvc: 50000, base_angle: 100000 },
+    options: { holeGeneral: 30000, holeDifficult: 40000, holeSpecial: 50000, holeBeam: 100000, specialPipe: 30000, airGuide: 50000, ceilingWork: 100000, floorSleeve: 50000, inspectionHole: 100000, prePiping: 100000, smartLink: 30000 },
+    rack: { new_900: 110000, new_1000: 130000, new_1100: 150000, new_1200: 200000, new_dual: 180000, new_custom: 0, exist_small: 70000, exist_large: 90000, danger_small: 30000, danger_medium: 50000, danger_large: 70000, base_pvc: 50000, base_angle: 100000, base_owned: 30000 },
     gasOptions: { none: 0, cool_under5: 30000, cool_over5: 50000, heat_under5: 50000, heat_over5: 70000, over10: 0 },
-    electric: { cable: { under40: 10000, over40: 15000 }, breaker: { '1p30a': 50000, '1p50a': 70000, '3p30a': 100000, '3p50a': 150000, 'box_1p': 50000, 'box_3p': 100000, 'connection_1p': 40000, 'connection_3p': 70000 } },
+    electric: { cable: { under40: 12000, over40: 20000 }, breaker: { '1p30a': 50000, '1p50a': 70000, '3p30a': 100000, '3p50a': 150000, 'box_1p': 50000, 'box_3p': 100000, 'connection_1p': 50000, 'connection_3p': 100000 } },
     drain: { pump: { 'std_4m': 100000, 'std_6m': 120000, 'std_8m': 150000, 'std_over10': 200000, 'low_noise': 200000, 'own': 70000 }, hose: 4000, pvc: 10000 },
     removal: { none: 0, basic: 0, wall: 30000, stand: 50000, large: 100000 },
     transportMove: { none: 0, same_dong: 0, same_gu: 30000, under_30km: 50000, over_30km: 0 },
-    transport: { none: 0, wall_low: 30000, stand_low: 50000, high_floor: 100000, manual_100m: 30000 }
+    transport: { none: 0, wall_small: 30000, wall_stand_medium: 50000, manual_100m: 30000 },
+    copperPipe: { wall: 50000, stand: 75000 }
   };
 
   // --- [NEW] 배관 길이에 따른 냉매 충전 자동 설정 ---
@@ -311,7 +301,7 @@ export default function App() {
 
     const specialPipePrice = specialPipeLength * PRICING.options.specialPipe;
     let buriedPrice = installType === 'buried' ? buriedCount * PRICING.buried.base : 0;
-    const holePrice = (holeCountGeneral * PRICING.options.holeGeneral) + (holeCountDifficult * PRICING.options.holeDifficult) + (holeCountSpecial * PRICING.options.holeSpecial);
+    const holePrice = (holeCountGeneral * PRICING.options.holeGeneral) + (holeCountDifficult * PRICING.options.holeDifficult) + (holeCountSpecial * PRICING.options.holeSpecial) + (holeCountBeam * PRICING.options.holeBeam);
 
     let rackPrice = 0;
     let negotiableFlag = false;
@@ -351,28 +341,26 @@ export default function App() {
     const floorSleevePrice = floorSleeveCount * PRICING.options.floorSleeve;
     const inspectionHolePrice = inspectionHoleCount * PRICING.options.inspectionHole;
     const prePipingPrice = isPrePiping ? PRICING.options.prePiping : 0;
-    let smartLinkPrice = acMode === 'used' ? smartLinkCount * PRICING.options.smartLink : (isSmartLink ? PRICING.options.smartLink : 0);
-
-    // Re-calculate smartLinkPrice for total calculation correctly based on logic
     const calcSmartLinkPrice = acMode === 'used' ? smartLinkCount * PRICING.options.smartLink : (isSmartLink ? PRICING.options.smartLink : 0);
+    const copperPipePrice = acMode === 'heating' ? 0 : (copperPipeCounts.wall * PRICING.copperPipe.wall) + (copperPipeCounts.stand * PRICING.copperPipe.stand);
 
     const customItemsTotal = customItem1Price + customItem2Price; // 직접 입력 합계
 
-    const othersTotal = holePrice + airGuidePrice + ceilingWorkPrice + floorSleevePrice + inspectionHolePrice + prePipingPrice + calcSmartLinkPrice + customItemsTotal;
+    const othersTotal = holePrice + airGuidePrice + ceilingWorkPrice + floorSleevePrice + inspectionHolePrice + prePipingPrice + calcSmartLinkPrice + customItemsTotal + copperPipePrice;
     const total = basePrice + pipePrice + specialPipePrice + buriedPrice + rackPrice + gasPrice + electricPrice + drainPrice + removalPrice + transportPrice + transportMovePrice + othersTotal;
 
     setIsNegotiable(negotiableFlag);
     setTotalPrice(total);
     setBreakdown({ base: basePrice, pipe: pipePrice + specialPipePrice + buriedPrice, electric: electricPrice, others: rackPrice + gasPrice + drainPrice + removalPrice + transportPrice + transportMovePrice + othersTotal });
-  }, [acMode, acType, acCount, installType, pipeLength, pipeLengthWall, specialPipeLength, holeCountGeneral, holeCountDifficult, holeCountSpecial, rackCounts, gasCounts, powerCableType, powerCableLength, breakerCounts, drainPumpCounts, drainHoseLength, drainPVCLength, removalType, transportType, transportMoveType, airGuideCount, isCeilingWork, floorSleeveCount, inspectionHoleCount, isPrePiping, buriedCount, isSmartLink, smartLinkCount, customItem1Price, customItem2Price]);
+  }, [acMode, acType, acCount, installType, pipeLength, pipeLengthWall, specialPipeLength, holeCountGeneral, holeCountDifficult, holeCountSpecial, holeCountBeam, rackCounts, gasCounts, powerCableType, powerCableLength, breakerCounts, drainPumpCounts, drainHoseLength, drainPVCLength, removalType, transportType, transportMoveType, airGuideCount, isCeilingWork, floorSleeveCount, inspectionHoleCount, isPrePiping, buriedCount, isSmartLink, smartLinkCount, customItem1Price, customItem2Price, copperPipeCounts]);
 
   const formatCurrency = (amount) => new Intl.NumberFormat('ko-KR').format(amount);
   const getAcTypeLabel = () => AC_TYPES[acMode].find(item => item.id === acType)?.label || '';
 
   const handleReset = () => {
     setAcType(AC_TYPES[acMode][0].id); setAcCount(1); setInstallType('general'); setPipeLength(0); setPipeLengthWall(0); setBuriedCount(1); setSpecialPipeLength(0);
-    setHoleCountGeneral(0); setHoleCountDifficult(0); setHoleCountSpecial(0);
-    setRackCounts({ new_900: 0, new_1000: 0, new_1100: 0, new_dual: 0, new_custom: 0, exist_small: 0, exist_large: 0, danger_small: 0, danger_medium: 0, danger_large: 0, base_pvc: 0, base_angle: 0 });
+    setHoleCountGeneral(0); setHoleCountDifficult(0); setHoleCountSpecial(0); setHoleCountBeam(0);
+    setRackCounts({ new_900: 0, new_1000: 0, new_1100: 0, new_1200: 0, new_dual: 0, new_custom: 0, exist_small: 0, exist_large: 0, danger_small: 0, danger_medium: 0, danger_large: 0, base_pvc: 0, base_angle: 0, base_owned: 0 });
     setGasCounts({ cool_under5: 0, cool_over5: 0, heat_under5: 0, heat_over5: 0, over10: 0 });
     setPowerCableType('under40'); setPowerCableLength(0);
     setBreakerCounts({ '1p30a': 0, '1p50a': 0, '3p30a': 0, '3p50a': 0, 'box_1p': 0, 'box_3p': 0, 'connection_1p': 0, 'connection_3p': 0 });
@@ -381,6 +369,7 @@ export default function App() {
     setRemovalType('none'); setTransportMoveType('none'); setTransportType('none');
     setAirGuideCount(0); setIsCeilingWork(false); setFloorSleeveCount(0); setInspectionHoleCount(0); setIsPrePiping(false); setIsSmartLink(false); setSmartLinkCount(0);
     setCustomItem1Name(''); setCustomItem1Price(0); setCustomItem2Name(''); setCustomItem2Price(0);
+    setCopperPipeCounts({ wall: 0, stand: 0 });
     setShowReceiptModal(false);
   };
 
@@ -423,10 +412,6 @@ ${customItem2Name || customItem2Price > 0 ? `- 추가: ${customItem2Name || '기
         if (successful) { setCopySuccess(true); setTimeout(() => setCopySuccess(false), 2000); }
     } catch (err) { console.error('Fallback copy failed', err); }
     document.body.removeChild(textArea);
-  };
-
-  const handlePrint = () => {
-       setShowReceiptModal(true);
   };
 
   return (
@@ -595,18 +580,18 @@ ${customItem2Name || customItem2Price > 0 ? `- 추가: ${customItem2Name || '기
                     <div className="flex flex-col flex-1 pr-2"><span className={`font-medium ${gasCounts[opt.id] > 0 ? t.textActive : 'text-slate-600'}`}>{opt.label}</span><span className="text-xs text-slate-400 font-normal">{opt.text ? opt.text : `${formatCurrency(opt.price)}원`}</span></div>
                     <div className="flex items-center gap-3 bg-white px-2 py-1 rounded-lg border border-slate-200 shrink-0">
                       {installType === 'general' ? (
-                         // 자동 설정 모드일 땐 버튼 비활성화 (보여주기만 함)
-                         <span className={`font-bold w-full text-center ${gasCounts[opt.id] > 0 ? t.textPrimary : 'text-slate-300'}`}>
-                           {gasCounts[opt.id] > 0 ? '적용됨' : '-'}
-                         </span>
-                      ) : (
-                        // 매립 배관 등 수동 모드
-                        <>
-                          <button onClick={() => updateCount(setGasCounts, opt.id, -1)} className="w-6 h-6 flex items-center justify-center hover:bg-slate-100 rounded text-slate-600">-</button>
-                          <span className={`font-bold w-4 text-center ${t.textPrimary}`}>{gasCounts[opt.id]}</span>
-                          <button onClick={() => updateCount(setGasCounts, opt.id, 1)} className="w-6 h-6 flex items-center justify-center hover:bg-slate-100 rounded text-slate-600">+</button>
-                        </>
-                      )}
+                          // 자동 설정 모드일 땐 버튼 비활성화 (보여주기만 함)
+                          <span className={`font-bold w-full text-center ${gasCounts[opt.id] > 0 ? t.textPrimary : 'text-slate-300'}`}>
+                            {gasCounts[opt.id] > 0 ? '적용됨' : '-'}
+                          </span>
+                       ) : (
+                         // 매립 배관 등 수동 모드
+                         <>
+                           <button onClick={() => updateCount(setGasCounts, opt.id, -1)} className="w-6 h-6 flex items-center justify-center hover:bg-slate-100 rounded text-slate-600">-</button>
+                           <span className={`font-bold w-4 text-center ${t.textPrimary}`}>{gasCounts[opt.id]}</span>
+                           <button onClick={() => updateCount(setGasCounts, opt.id, 1)} className="w-6 h-6 flex items-center justify-center hover:bg-slate-100 rounded text-slate-600">+</button>
+                         </>
+                       )}
                     </div>
                   </div>
                ))}
@@ -620,7 +605,7 @@ ${customItem2Name || customItem2Price > 0 ? `- 추가: ${customItem2Name || '기
                 <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
                    <div className="text-sm font-bold text-slate-700 mb-2 ml-1 flex items-center gap-1"><Wrench size={14} className="text-blue-500" /> 신규 앵글 제작</div>
                    <div className="space-y-1.5">
-                   {[{ id: 'new_900', label: '900mm(벽걸이 9평이하)', price: 110000 }, { id: 'new_1000', label: '1000mm(벽/스 16평이하)', price: 150000 }, { id: 'new_1100', label: '1100mm(중대형/40평이하)', price: 200000 }, { id: 'new_dual', label: '2단앵글', price: 180000 }, { id: 'new_custom', label: '제작앵글', price: 0, text: '별도 협의' }].map((opt) => (
+                   {[{ id: 'new_900', label: '900mm(벽걸이 9평이하)', price: 110000 }, { id: 'new_1000', label: '1000mm(벽/스 16평이하)', price: 130000 }, { id: 'new_1100', label: '1100mm(스탠드 23평이하)', price: 150000 }, { id: 'new_1200', label: '1200mm(중대형 40평이하)', price: 200000 }, { id: 'new_dual', label: '2단앵글', price: 180000 }, { id: 'new_custom', label: '제작앵글', price: 0, text: '별도 협의' }].map((opt) => (
                      <div key={opt.id} className={`w-full flex items-center justify-between p-2.5 rounded-xl border border-slate-200 bg-white transition-all hover:bg-slate-50 ${rackCounts[opt.id] > 0 ? `${t.borderActive} ${t.textActive} ring-1 ${t.ringActive}` : 'text-slate-600'}`}>
                        <div className="flex flex-col flex-1 pr-2"><span className={`font-medium text-sm`}>{opt.label}</span><span className="text-xs font-normal opacity-70 mt-0.5 block">{opt.text ? opt.text : `${formatCurrency(opt.price)}원`}</span></div>
                        <div className="flex items-center gap-3 bg-gray-50 px-2 py-1 rounded-md border border-gray-100 shrink-0"><button onClick={() => updateCount(setRackCounts, opt.id, -1)} className="w-5 h-5 flex items-center justify-center hover:bg-gray-200 rounded text-slate-500">-</button><span className={`font-bold w-4 text-center text-sm`}>{rackCounts[opt.id]}</span><button onClick={() => updateCount(setRackCounts, opt.id, 1)} className="w-5 h-5 flex items-center justify-center hover:bg-gray-200 rounded text-slate-500">+</button></div>
@@ -642,7 +627,7 @@ ${customItem2Name || customItem2Price > 0 ? `- 추가: ${customItem2Name || '기
                 <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
                    <div className="text-sm font-bold text-slate-700 mb-2 ml-1 flex items-center gap-1"><AlertCircle size={14} className="text-red-500" /> 위험수당 (2층이상)</div>
                    <div className="space-y-1.5">
-                   {[{ id: 'danger_small', label: '벽걸이 (9평 이하)', price: 30000 }, { id: 'danger_medium', label: '벽걸이/스탠드 (16평 이하)', price: 50000 }, { id: 'danger_large', label: '중대형 (40평 이하)', price: 100000 }].map((opt) => (
+                   {[{ id: 'danger_small', label: '벽걸이 (9평 이하)', price: 30000 }, { id: 'danger_medium', label: '벽걸이/스탠드 (16평 이하)', price: 50000 }, { id: 'danger_large', label: '중대형 (40평 이하)', price: 70000 }].map((opt) => (
                      <div key={opt.id} className={`w-full flex items-center justify-between p-2.5 rounded-xl border border-slate-200 bg-white transition-all hover:bg-slate-50 ${rackCounts[opt.id] > 0 ? `${t.borderActive} ${t.textActive} ring-1 ${t.ringActive}` : 'text-slate-600'}`}>
                        <div className="flex flex-col flex-1 pr-2"><span className={`font-medium text-sm`}>{opt.label}</span><span className="text-xs font-normal opacity-70 mt-0.5 block">{formatCurrency(opt.price)}원</span></div>
                        <div className="flex items-center gap-3 bg-gray-50 px-2 py-1 rounded-md border border-gray-100 shrink-0"><button onClick={() => updateCount(setRackCounts, opt.id, -1)} className="w-5 h-5 flex items-center justify-center hover:bg-gray-200 rounded text-slate-500">-</button><span className={`font-bold w-4 text-center text-sm`}>{rackCounts[opt.id]}</span><button onClick={() => updateCount(setRackCounts, opt.id, 1)} className="w-5 h-5 flex items-center justify-center hover:bg-gray-200 rounded text-slate-500">+</button></div>
@@ -653,7 +638,7 @@ ${customItem2Name || customItem2Price > 0 ? `- 추가: ${customItem2Name || '기
                 <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
                    <div className="text-sm font-bold text-slate-700 mb-2 ml-1 flex items-center gap-1"><CheckCircle2 size={14} className="text-slate-500" /> 바닥받침대 (베이스)</div>
                    <div className="space-y-1.5">
-                   {[{ id: 'base_pvc', label: 'PVC베이스', price: 50000 }, { id: 'base_angle', label: '앵글형베이스', price: 100000 }].map((opt) => (
+                   {[{ id: 'base_pvc', label: 'PVC베이스', price: 50000 }, { id: 'base_angle', label: '앵글형베이스', price: 100000 }, { id: 'base_owned', label: '베이스 보유 (재설치)', price: 30000 }].map((opt) => (
                      <div key={opt.id} className={`w-full flex items-center justify-between p-2.5 rounded-xl border border-slate-200 bg-white transition-all hover:bg-slate-50 ${rackCounts[opt.id] > 0 ? `${t.borderActive} ${t.textActive} ring-1 ${t.ringActive}` : 'text-slate-600'}`}>
                        <div className="flex flex-col flex-1 pr-2"><span className={`font-medium text-sm`}>{opt.label}</span><span className="text-xs font-normal opacity-70 mt-0.5 block">{formatCurrency(opt.price)}원</span></div>
                        <div className="flex items-center gap-3 bg-gray-50 px-2 py-1 rounded-md border border-gray-100 shrink-0"><button onClick={() => updateCount(setRackCounts, opt.id, -1)} className="w-5 h-5 flex items-center justify-center hover:bg-gray-200 rounded text-slate-500">-</button><span className={`font-bold w-4 text-center text-sm`}>{rackCounts[opt.id]}</span><button onClick={() => updateCount(setRackCounts, opt.id, 1)} className="w-5 h-5 flex items-center justify-center hover:bg-gray-200 rounded text-slate-500">+</button></div>
@@ -667,8 +652,9 @@ ${customItem2Name || customItem2Price > 0 ? `- 추가: ${customItem2Name || '기
            {/* 5. 타공 */}
            <section className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 mt-4 transition-all"><h2 className="text-sm font-bold text-slate-400 mb-4 uppercase tracking-wider flex items-center gap-2"><Drill size={16} /> 타공 (벽뚫기)</h2><div className="space-y-1.5">
                 <div className="w-full flex items-center justify-between p-2.5 rounded-xl border border-slate-200 bg-white transition-all hover:bg-slate-50"><div className="text-sm text-slate-600 flex flex-col"><span className="font-medium">일반 타공</span><span className="text-xs text-slate-400">30,000원 / 구</span></div><div className="flex items-center gap-3 bg-white px-2 py-1 rounded-lg border border-slate-200"><button onClick={() => setHoleCountGeneral(Math.max(0, holeCountGeneral - 1))} className="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded text-slate-600">-</button><span className={`font-bold text-lg w-6 text-center ${t.textPrimary}`}>{holeCountGeneral}</span><button onClick={() => setHoleCountGeneral(holeCountGeneral + 1)} className="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded text-slate-600">+</button></div></div>
-                <div className="w-full flex items-center justify-between p-2.5 rounded-xl border border-slate-200 bg-white transition-all hover:bg-slate-50"><div className="text-sm text-slate-600 flex flex-col"><span className="font-medium">난타공 (벽두께 30cm↑)</span><span className="text-xs text-slate-400">50,000원 / 구</span></div><div className="flex items-center gap-3 bg-white px-2 py-1 rounded-lg border border-slate-200"><button onClick={() => setHoleCountDifficult(Math.max(0, holeCountDifficult - 1))} className="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded text-slate-600">-</button><span className={`font-bold text-lg w-6 text-center ${t.textPrimary}`}>{holeCountDifficult}</span><button onClick={() => setHoleCountDifficult(holeCountDifficult + 1)} className="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded text-slate-600">+</button></div></div>
-                <div className="w-full flex items-center justify-between p-2.5 rounded-xl border border-slate-200 bg-white transition-all hover:bg-slate-50"><div className="text-sm text-slate-600 flex flex-col"><span className="font-medium">특수 타공 (대리석/스텐 등)</span><span className="text-xs text-slate-400">70,000원 / 구</span></div><div className="flex items-center gap-3 bg-white px-2 py-1 rounded-lg border border-slate-200"><button onClick={() => setHoleCountSpecial(Math.max(0, holeCountSpecial - 1))} className="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded text-slate-600">-</button><span className={`font-bold text-lg w-6 text-center ${t.textPrimary}`}>{holeCountSpecial}</span><button onClick={() => setHoleCountSpecial(holeCountSpecial + 1)} className="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded text-slate-600">+</button></div></div>
+                <div className="w-full flex items-center justify-between p-2.5 rounded-xl border border-slate-200 bg-white transition-all hover:bg-slate-50"><div className="text-sm text-slate-600 flex flex-col"><span className="font-medium">난타공 (벽두께 30cm↑)</span><span className="text-xs text-slate-400">40,000원 / 구</span></div><div className="flex items-center gap-3 bg-white px-2 py-1 rounded-lg border border-slate-200"><button onClick={() => setHoleCountDifficult(Math.max(0, holeCountDifficult - 1))} className="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded text-slate-600">-</button><span className={`font-bold text-lg w-6 text-center ${t.textPrimary}`}>{holeCountDifficult}</span><button onClick={() => setHoleCountDifficult(holeCountDifficult + 1)} className="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded text-slate-600">+</button></div></div>
+                <div className="w-full flex items-center justify-between p-2.5 rounded-xl border border-slate-200 bg-white transition-all hover:bg-slate-50"><div className="text-sm text-slate-600 flex flex-col"><span className="font-medium">특수 타공 (대리석/스텐 등)</span><span className="text-xs text-slate-400">50,000원 / 구</span></div><div className="flex items-center gap-3 bg-white px-2 py-1 rounded-lg border border-slate-200"><button onClick={() => setHoleCountSpecial(Math.max(0, holeCountSpecial - 1))} className="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded text-slate-600">-</button><span className={`font-bold text-lg w-6 text-center ${t.textPrimary}`}>{holeCountSpecial}</span><button onClick={() => setHoleCountSpecial(holeCountSpecial + 1)} className="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded text-slate-600">+</button></div></div>
+                <div className="w-full flex items-center justify-between p-2.5 rounded-xl border border-slate-200 bg-white transition-all hover:bg-slate-50"><div className="text-sm text-slate-600 flex flex-col"><span className="font-medium">보(하리) 타공</span><span className="text-xs text-slate-400">100,000원 / 구</span></div><div className="flex items-center gap-3 bg-white px-2 py-1 rounded-lg border border-slate-200"><button onClick={() => setHoleCountBeam(Math.max(0, holeCountBeam - 1))} className="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded text-slate-600">-</button><span className={`font-bold text-lg w-6 text-center ${t.textPrimary}`}>{holeCountBeam}</span><button onClick={() => setHoleCountBeam(holeCountBeam + 1)} className="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded text-slate-600">+</button></div></div>
              </div></section>
 
            {/* 6. 전기 */}
@@ -680,8 +666,8 @@ ${customItem2Name || customItem2Price > 0 ? `- 추가: ${customItem2Name || '기
                     <span className="text-sm font-medium text-slate-700">전원선 (m당)</span>
                   </div>
                   <div className="flex bg-slate-100 p-1 rounded-lg mb-3">
-                    <button onClick={() => setPowerCableType('under40')} className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${powerCableType === 'under40' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500'}`}>40평 이하 (10,000원)</button>
-                    <button onClick={() => setPowerCableType('over40')} className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${powerCableType === 'over40' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500'}`}>40평 초과 (15,000원)</button>
+                    <button onClick={() => setPowerCableType('under40')} className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${powerCableType === 'under40' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500'}`}>40평 이하 (12,000원)</button>
+                    <button onClick={() => setPowerCableType('over40')} className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${powerCableType === 'over40' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500'}`}>40평 초과 (20,000원)</button>
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="text-xs text-slate-500 w-10">길이</span>
@@ -697,7 +683,7 @@ ${customItem2Name || customItem2Price > 0 ? `- 추가: ${customItem2Name || '기
                    <div className="text-sm font-bold text-slate-600 mb-2 ml-1 flex items-center gap-1"><Zap size={14} className="text-yellow-500 fill-yellow-500" /> 단상 (220V)</div>
                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
                        <div className="space-y-1.5">
-                         {[{ id: '1p30a', label: '30A 이하', price: 50000 }, { id: '1p50a', label: '50A 이하', price: 70000 }, { id: 'box_1p', label: '차단기함(PVC)', price: 50000 }, { id: 'connection_1p', label: '단상 전원결속', price: 40000 }].map((opt) => (
+                         {[{ id: '1p30a', label: '30A 이하', price: 50000 }, { id: '1p50a', label: '50A 이하', price: 70000 }, { id: 'box_1p', label: '차단기함(PVC)', price: 50000 }, { id: 'connection_1p', label: '단상 전원결속', price: 50000 }].map((opt) => (
                            <div key={opt.id} className={`w-full flex items-center justify-between p-2.5 rounded-xl border border-slate-200 bg-white transition-all hover:bg-slate-50 ${breakerCounts[opt.id] > 0 ? `${t.borderActive} ${t.textActive} ring-1 ${t.ringActive}` : 'text-slate-600'}`}>
                              <div className="flex flex-col flex-1 pr-2"><span className={`font-medium text-sm`}>{opt.label}</span><span className="text-xs font-normal opacity-70 ml-6">{formatCurrency(opt.price)}원</span></div>
                              <div className="flex items-center gap-3 bg-gray-50 px-2 py-1 rounded-md border border-gray-100 shrink-0"><button onClick={() => updateCount(setBreakerCounts, opt.id, -1)} className="w-5 h-5 flex items-center justify-center hover:bg-gray-200 rounded text-slate-500">-</button><span className={`font-bold w-4 text-center text-sm`}>{breakerCounts[opt.id]}</span><button onClick={() => updateCount(setBreakerCounts, opt.id, 1)} className="w-5 h-5 flex items-center justify-center hover:bg-gray-200 rounded text-slate-500">+</button></div>
@@ -710,7 +696,7 @@ ${customItem2Name || customItem2Price > 0 ? `- 추가: ${customItem2Name || '기
                    <div className="text-sm font-bold text-slate-600 mb-2 ml-1 flex items-center gap-1"><Zap size={14} className="text-red-500 fill-red-500" /> 삼상 (380V)</div>
                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
                        <div className="space-y-1.5">
-                         {[{ id: '3p30a', label: '30A 이하', price: 100000 }, { id: '3p50a', label: '50A 이하', price: 150000 }, { id: 'box_3p', label: '차단기함(PVC)', price: 100000 }, { id: 'connection_3p', label: '삼상 전원결속', price: 70000 }].map((opt) => (
+                         {[{ id: '3p30a', label: '30A 이하', price: 100000 }, { id: '3p50a', label: '50A 이하', price: 150000 }, { id: 'box_3p', label: '차단기함(PVC)', price: 100000 }, { id: 'connection_3p', label: '삼상 전원결속', price: 100000 }].map((opt) => (
                            <div key={opt.id} className={`w-full flex items-center justify-between p-2.5 rounded-xl border border-slate-200 bg-white transition-all hover:bg-slate-50 ${breakerCounts[opt.id] > 0 ? `${t.borderActive} ${t.textActive} ring-1 ${t.ringActive}` : 'text-slate-600'}`}>
                              <div className="flex flex-col flex-1 pr-2"><span className={`font-medium text-sm`}>{opt.label}</span><span className="text-xs font-normal opacity-70 ml-6">{formatCurrency(opt.price)}원</span></div>
                              <div className="flex items-center gap-3 bg-gray-50 px-2 py-1 rounded-md border border-gray-100 shrink-0"><button onClick={() => updateCount(setBreakerCounts, opt.id, -1)} className="w-5 h-5 flex items-center justify-center hover:bg-gray-200 rounded text-slate-500">-</button><span className={`font-bold w-4 text-center text-sm`}>{breakerCounts[opt.id]}</span><button onClick={() => updateCount(setBreakerCounts, opt.id, 1)} className="w-5 h-5 flex items-center justify-center hover:bg-gray-200 rounded text-slate-500">+</button></div>
@@ -777,11 +763,59 @@ ${customItem2Name || customItem2Price > 0 ? `- 추가: ${customItem2Name || '기
            </section>
 
            {/* 10. 운반비 */}
-           <section className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 mt-4 transition-all"><h2 className="text-sm font-bold text-slate-400 mb-4 uppercase tracking-wider flex items-center gap-2"><Truck size={16} /> <span>운반비</span><span className="text-[11px] font-normal text-slate-400 ml-1 tracking-normal">(엘리베이터 없는 건물 3층부터 적용)</span></h2><div className="space-y-1.5">{[{ id: 'none', label: '해당 없음', price: 0 }, { id: 'wall_low', label: '층간운반 (벽걸이 3층이하)', price: 30000 }, { id: 'stand_low', label: '층간운반 (스탠드 3층이하)', price: 50000 }, { id: 'high_floor', label: '층간운반 (벽/스 3층초과)', price: 100000 }, { id: 'manual_100m', label: '도수운반 (100m이상)', price: 30000 }].map((opt) => (<button key={opt.id} onClick={() => setTransportType(opt.id)} className={`w-full flex items-center justify-between p-2.5 rounded-xl border border-slate-200 bg-white transition-all text-left hover:bg-slate-50 ${transportType === opt.id ? `${t.borderActive} ${t.bgActive} ${t.textActive} ring-1 ${t.ringActive}` : 'text-slate-600'}`}><div className="flex items-center gap-2 flex-1"><div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors shrink-0 ${transportType === opt.id ? `${t.checkIcon}` : 'border-slate-300 bg-white'}`}>{transportType === opt.id && <div className="w-2 h-2 bg-white rounded-full" />}</div><span className="font-medium">{opt.label}</span></div><span className="font-bold shrink-0">{opt.price > 0 ? `${formatCurrency(opt.price)}원` : '0원'}</span></button>))}</div></section>
+           <section className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 mt-4 transition-all">
+             <h2 className="text-sm font-bold text-slate-400 mb-4 uppercase tracking-wider flex items-center gap-2"><Truck size={16} /> <span>운반비</span><span className="text-[11px] font-normal text-slate-400 ml-1 tracking-normal">(엘리베이터 없는 건물 3층부터 적용)</span></h2>
+             <div className="space-y-1.5">
+               {[{ id: 'none', label: '해당 없음', price: 0 }, { id: 'wall_small', label: '벽걸이 (9평 이하)', price: 30000 }, { id: 'wall_stand_medium', label: '벽걸이/스탠드 (16평 이하)', price: 50000 }, { id: 'manual_100m', label: '도수운반 (100m 이상)', price: 30000 }].map((opt) => (
+                 <button key={opt.id} onClick={() => setTransportType(opt.id)} className={`w-full flex items-center justify-between p-2.5 rounded-xl border border-slate-200 bg-white transition-all text-left hover:bg-slate-50 ${transportType === opt.id ? `${t.borderActive} ${t.bgActive} ${t.textActive} ring-1 ${t.ringActive}` : 'text-slate-600'}`}>
+                   <div className="flex items-center gap-2 flex-1">
+                     <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors shrink-0 ${transportType === opt.id ? `${t.checkIcon}` : 'border-slate-300 bg-white'}`}>
+                       {transportType === opt.id && <div className="w-2 h-2 bg-white rounded-full" />}
+                     </div>
+                     <span className="font-medium">{opt.label}</span>
+                   </div>
+                   <span className="font-bold shrink-0">{opt.price > 0 ? `${formatCurrency(opt.price)}원` : '0원'}</span>
+                 </button>
+               ))}
+             </div>
+             <div className="text-xs text-red-500 mt-2 font-medium space-y-1">
+               <p>* 5층 이상 운반은 전 제품 사다리차 비용 발생</p>
+               <p>* 실외기 2팬 모델은 3층부터 사다리차 비용 발생</p>
+             </div>
+           </section>
            
            {/* 11. 배관 작업 */}
-           <section className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 mt-4 transition-all"><h2 className="text-sm font-bold text-slate-400 mb-4 uppercase tracking-wider flex items-center gap-2"><HardHat size={16} /> 배관 작업</h2><div className="space-y-1.5"><button onClick={() => setIsPrePiping(!isPrePiping)} className={`w-full flex items-center justify-between p-2.5 rounded-xl border border-slate-200 bg-white transition-all text-left hover:bg-slate-50 ${isPrePiping ? `${t.borderActive} ${t.bgActive} ${t.textActive} ring-1 ${t.ringActive}` : 'text-slate-600'}`}><div className="flex items-center gap-2 flex-1"><div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors shrink-0 ${isPrePiping ? `${t.checkIcon}` : 'border-slate-300 bg-white'}`}>{isPrePiping && <div className="w-2 h-2 bg-white rounded-full" />}</div><div className="flex flex-col items-start text-left"><span className="font-medium">선배관작업</span><span className="text-xs text-slate-400 font-normal">미리 배관 작업 필요시 출장비</span></div></div><span className="font-bold whitespace-nowrap shrink-0">100,000원</span></button><button onClick={() => setIsCeilingWork(!isCeilingWork)} className={`w-full flex items-center justify-between p-2.5 rounded-xl border border-slate-200 bg-white transition-all text-left hover:bg-slate-50 ${isCeilingWork ? `${t.borderActive} ${t.bgActive} ${t.textActive} ring-1 ${t.ringActive}` : 'text-slate-600'}`}><div className="flex items-center gap-2 flex-1"><div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors shrink-0 ${isCeilingWork ? `${t.checkIcon}` : 'border-slate-300 bg-white'}`}>{isCeilingWork && <div className="w-2 h-2 bg-white rounded-full" />}</div><div className="flex flex-col items-start text-left"><span className="font-medium">천장작업</span><span className="text-xs text-slate-400 font-normal">천장 안으로 배관 작업시</span></div></div><span className="font-bold whitespace-nowrap shrink-0">100,000원</span></button><div className={`w-full flex items-center justify-between p-2.5 rounded-xl border border-slate-200 bg-white transition-all text-left hover:bg-slate-50 ${floorSleeveCount > 0 ? `${t.borderActive} ${t.bgActive} ring-1 ${t.ringActive}` : ''}`}><div className="flex items-center gap-3"><div className="flex flex-col"><span className={`font-medium ${floorSleeveCount > 0 ? t.textActive : 'text-slate-600'}`}>바닥슬리브</span><span className="text-xs text-slate-400 font-normal">바닥 관로로 배관 작업시</span><span className="text-[10px] text-slate-400 mt-0.5">대당 50,000원</span></div></div><div className="flex items-center gap-3 bg-white px-2 py-1 rounded-lg border border-slate-200 shrink-0"><button onClick={() => setFloorSleeveCount(Math.max(0, floorSleeveCount - 1))} className="w-6 h-6 flex items-center justify-center hover:bg-slate-100 rounded text-slate-600">-</button><span className={`font-bold w-4 text-center ${t.textPrimary}`}>{floorSleeveCount}</span><button onClick={() => setFloorSleeveCount(floorSleeveCount + 1)} className="w-6 h-6 flex items-center justify-center hover:bg-slate-100 rounded text-slate-600">+</button></div></div><div className={`w-full flex items-center justify-between p-2.5 rounded-xl border border-slate-200 bg-white transition-all text-left hover:bg-slate-50 ${inspectionHoleCount > 0 ? `${t.borderActive} ${t.bgActive} ring-1 ${t.ringActive}` : ''}`}><div className="flex items-center gap-3"><div className="flex flex-col"><span className={`font-medium ${inspectionHoleCount > 0 ? t.textActive : 'text-slate-600'}`}>점검구</span><span className="text-xs text-slate-400 font-normal">구당 100,000원</span></div></div><div className="flex items-center gap-3 bg-white px-2 py-1 rounded-lg border border-slate-200 shrink-0"><button onClick={() => setInspectionHoleCount(Math.max(0, inspectionHoleCount - 1))} className="w-6 h-6 flex items-center justify-center hover:bg-slate-100 rounded text-slate-600">-</button><span className={`font-bold w-4 text-center ${t.textPrimary}`}>{inspectionHoleCount}</span><button onClick={() => setInspectionHoleCount(inspectionHoleCount + 1)} className="w-6 h-6 flex items-center justify-center hover:bg-slate-100 rounded text-slate-600">+</button></div></div></div></section>
+           <section className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 mt-4 transition-all"><h2 className="text-sm font-bold text-slate-400 mb-4 uppercase tracking-wider flex items-center gap-2"><HardHat size={16} /> 배관 작업</h2><div className="space-y-1.5"><button onClick={() => setIsPrePiping(!isPrePiping)} className={`w-full flex items-center justify-between p-2.5 rounded-xl border border-slate-200 bg-white transition-all text-left hover:bg-slate-50 ${isPrePiping ? `${t.borderActive} ${t.bgActive} ${t.textActive} ring-1 ${t.ringActive}` : 'text-slate-600'}`}><div className="flex items-center gap-2 flex-1"><div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors shrink-0 ${isPrePiping ? `${t.checkIcon}` : 'border-slate-300 bg-white'}`}>{isPrePiping && <div className="w-2 h-2 bg-white rounded-full" />}</div><div className="flex flex-col items-start text-left"><span className="font-medium">선배관작업</span><span className="text-xs text-slate-400 font-normal">미리 배관 작업 필요시 출장비</span></div></div><span className="font-bold whitespace-nowrap shrink-0">100,000원</span></button><button onClick={() => setIsCeilingWork(!isCeilingWork)} className={`w-full flex items-center justify-between p-2.5 rounded-xl border border-slate-200 bg-white transition-all text-left hover:bg-slate-50 ${isCeilingWork ? `${t.borderActive} ${t.bgActive} ${t.textActive} ring-1 ${t.ringActive}` : 'text-slate-600'}`}><div className="flex items-center gap-2 flex-1"><div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors shrink-0 ${isCeilingWork ? `${t.checkIcon}` : 'border-slate-300 bg-white'}`}>{isCeilingWork && <div className="w-2 h-2 bg-white rounded-full" />}</div><div className="flex flex-col items-start text-left"><span className="font-medium">천장작업</span><span className="text-xs text-slate-400 font-normal">천장 안으로 배관 작업시</span></div></div><span className="font-bold whitespace-nowrap shrink-0">100,000원</span></button><div className={`w-full flex items-center justify-between p-2.5 rounded-xl border border-slate-200 bg-white transition-all text-left hover:bg-slate-50 ${floorSleeveCount > 0 ? `${t.borderActive} ${t.bgActive} ring-1 ${t.ringActive}` : 'text-slate-600'}`}><div className="flex items-center gap-3"><div className="flex flex-col"><span className={`font-medium ${floorSleeveCount > 0 ? t.textActive : 'text-slate-600'}`}>바닥슬리브</span><span className="text-xs text-slate-400 font-normal">바닥 관로로 배관 작업시</span><span className="text-[10px] text-slate-400 mt-0.5">대당 50,000원</span></div></div><div className="flex items-center gap-3 bg-white px-2 py-1 rounded-lg border border-slate-200 shrink-0"><button onClick={() => setFloorSleeveCount(Math.max(0, floorSleeveCount - 1))} className="w-6 h-6 flex items-center justify-center hover:bg-slate-100 rounded text-slate-600">-</button><span className={`font-bold w-4 text-center ${t.textPrimary}`}>{floorSleeveCount}</span><button onClick={() => setFloorSleeveCount(floorSleeveCount + 1)} className="w-6 h-6 flex items-center justify-center hover:bg-slate-100 rounded text-slate-600">+</button></div></div><div className={`w-full flex items-center justify-between p-2.5 rounded-xl border border-slate-200 bg-white transition-all text-left hover:bg-slate-50 ${inspectionHoleCount > 0 ? `${t.borderActive} ${t.bgActive} ring-1 ${t.ringActive}` : ''}`}><div className="flex items-center gap-3"><div className="flex flex-col"><span className={`font-medium ${inspectionHoleCount > 0 ? t.textActive : 'text-slate-600'}`}>점검구</span><span className="text-xs text-slate-400 font-normal">구당 100,000원</span></div></div><div className="flex items-center gap-3 bg-white px-2 py-1 rounded-lg border border-slate-200 shrink-0"><button onClick={() => setInspectionHoleCount(Math.max(0, inspectionHoleCount - 1))} className="w-6 h-6 flex items-center justify-center hover:bg-slate-100 rounded text-slate-600">-</button><span className={`font-bold w-4 text-center ${t.textPrimary}`}>{inspectionHoleCount}</span><button onClick={() => setInspectionHoleCount(inspectionHoleCount + 1)} className="w-6 h-6 flex items-center justify-center hover:bg-slate-100 rounded text-slate-600">+</button></div></div></div></section>
 
+           {/* [NEW] 동배관 교체 */}
+           {acMode !== 'heating' && (
+           <section className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 mt-4 transition-all">
+             <h2 className="text-sm font-bold text-slate-400 mb-4 uppercase tracking-wider flex items-center gap-2">
+               <Hammer size={16} /> 
+               <span>동배관 교체</span>
+               <span className="text-[11px] font-normal text-slate-400 ml-1 tracking-normal">(기본배관을 동배관으로 교체-가정용)</span>
+             </h2>
+             <div className="space-y-1.5">
+               <div className={`w-full flex items-center justify-between p-2.5 rounded-xl border border-slate-200 bg-white transition-all hover:bg-slate-50 ${copperPipeCounts.wall > 0 ? `${t.borderActive} ${t.bgActive} ring-1 ${t.ringActive}` : ''}`}>
+                 <div className="flex flex-col flex-1 pr-2"><span className={`font-medium ${copperPipeCounts.wall > 0 ? t.textActive : 'text-slate-600'}`}>벽걸이 (기본배관5m)</span><span className="text-xs text-slate-400 font-normal">50,000원</span></div>
+                 <div className="flex items-center gap-3 bg-white px-2 py-1 rounded-lg border border-slate-200 shrink-0">
+                   <button onClick={() => updateCount(setCopperPipeCounts, 'wall', -1)} className="w-6 h-6 flex items-center justify-center hover:bg-slate-100 rounded text-slate-600">-</button>
+                   <span className={`font-bold w-4 text-center ${t.textPrimary}`}>{copperPipeCounts.wall}</span>
+                   <button onClick={() => updateCount(setCopperPipeCounts, 'wall', 1)} className="w-6 h-6 flex items-center justify-center hover:bg-slate-100 rounded text-slate-600">+</button>
+                 </div>
+               </div>
+               <div className={`w-full flex items-center justify-between p-2.5 rounded-xl border border-slate-200 bg-white transition-all hover:bg-slate-50 ${copperPipeCounts.stand > 0 ? `${t.borderActive} ${t.bgActive} ring-1 ${t.ringActive}` : ''}`}>
+                 <div className="flex flex-col flex-1 pr-2"><span className={`font-medium ${copperPipeCounts.stand > 0 ? t.textActive : 'text-slate-600'}`}>스탠드 (기본배관5m)</span><span className="text-xs text-slate-400 font-normal">75,000원</span></div>
+                 <div className="flex items-center gap-3 bg-white px-2 py-1 rounded-lg border border-slate-200 shrink-0">
+                   <button onClick={() => updateCount(setCopperPipeCounts, 'stand', -1)} className="w-6 h-6 flex items-center justify-center hover:bg-slate-100 rounded text-slate-600">-</button>
+                   <span className={`font-bold w-4 text-center ${t.textPrimary}`}>{copperPipeCounts.stand}</span>
+                   <button onClick={() => updateCount(setCopperPipeCounts, 'stand', 1)} className="w-6 h-6 flex items-center justify-center hover:bg-slate-100 rounded text-slate-600">+</button>
+                 </div>
+               </div>
+             </div>
+           </section>
+           )}
+           
            {/* 12. 기타 작업 (직접 입력) */}
            <section className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 mt-4 transition-all">
              <h2 className="text-sm font-bold text-slate-400 mb-2 uppercase tracking-wider flex items-center gap-2">
@@ -1029,13 +1063,13 @@ ${customItem2Name || customItem2Price > 0 ? `- 추가: ${customItem2Name || '기
                             </tr>
                         ))}
                         {/* 타공 */}
-                        {(holeCountGeneral > 0 || holeCountDifficult > 0 || holeCountSpecial > 0) && (
+                        {(holeCountGeneral > 0 || holeCountDifficult > 0 || holeCountSpecial > 0 || holeCountBeam > 0) && (
                               <tr>
-                                <td className="border border-gray-400 p-2">타공 (일반/난타공/특수)</td>
-                                <td className="border border-gray-400 p-2 text-right">{holeCountGeneral + holeCountDifficult + holeCountSpecial}구</td>
+                                <td className="border border-gray-400 p-2">타공 (일반/난타공/특수/보)</td>
+                                <td className="border border-gray-400 p-2 text-right">{holeCountGeneral + holeCountDifficult + holeCountSpecial + holeCountBeam}구</td>
                                 <td className="border border-gray-400 p-2 text-right">
                                     {formatCurrency(
-                                        (holeCountGeneral * 30000) + (holeCountDifficult * 50000) + (holeCountSpecial * 70000)
+                                        (holeCountGeneral * 30000) + (holeCountDifficult * 40000) + (holeCountSpecial * 50000) + (holeCountBeam * 100000)
                                     )}원
                                 </td>
                               </tr>
@@ -1045,7 +1079,7 @@ ${customItem2Name || customItem2Price > 0 ? `- 추가: ${customItem2Name || '기
                             <tr>
                                 <td className="border border-gray-400 p-2">전원선 ({powerCableType === 'under40' ? '40평↓' : '40평↑'})</td>
                                 <td className="border border-gray-400 p-2 text-right">{powerCableLength}m</td>
-                                <td className="border border-gray-400 p-2 text-right">{formatCurrency(powerCableLength * (powerCableType === 'under40' ? 10000 : 15000))}원</td>
+                                <td className="border border-gray-400 p-2 text-right">{formatCurrency(powerCableLength * (powerCableType === 'under40' ? 12000 : 20000))}원</td>
                             </tr>
                         )}
                         {Object.keys(breakerCounts).map(key => breakerCounts[key] > 0 && (
@@ -1068,6 +1102,20 @@ ${customItem2Name || customItem2Price > 0 ? `- 추가: ${customItem2Name || '기
                                   <td className="border border-gray-400 p-2">추가 드레인 (호스/PVC)</td>
                                   <td className="border border-gray-400 p-2 text-right">{drainHoseLength + drainPVCLength}m</td>
                                   <td className="border border-gray-400 p-2 text-right">{formatCurrency((drainHoseLength * 4000) + (drainPVCLength * 10000))}원</td>
+                            </tr>
+                        )}
+                        {/* 동배관 교체 (인쇄용) */}
+                        {acMode !== 'heating' && (copperPipeCounts.wall > 0 || copperPipeCounts.stand > 0) && (
+                            <tr>
+                                <td className="border border-gray-400 p-2">동배관 교체</td>
+                                <td className="border border-gray-400 p-2 text-right">
+                                    {copperPipeCounts.wall > 0 && `벽걸이 ${copperPipeCounts.wall}개`}
+                                    {copperPipeCounts.wall > 0 && copperPipeCounts.stand > 0 && ', '}
+                                    {copperPipeCounts.stand > 0 && `스탠드 ${copperPipeCounts.stand}개`}
+                                </td>
+                                <td className="border border-gray-400 p-2 text-right">
+                                    {formatCurrency((copperPipeCounts.wall * PRICING.copperPipe.wall) + (copperPipeCounts.stand * PRICING.copperPipe.stand))}원
+                                </td>
                             </tr>
                         )}
                         {/* 철거/운반 */}
@@ -1254,13 +1302,13 @@ ${customItem2Name || customItem2Price > 0 ? `- 추가: ${customItem2Name || '기
                               <td className="border border-gray-400 p-2 text-right">{key === 'new_custom' ? '별도협의' : formatCurrency(rackCounts[key] * PRICING.rack[key]) + '원'}</td>
                       </tr>
                   ))}
-                  {(holeCountGeneral > 0 || holeCountDifficult > 0 || holeCountSpecial > 0) && (
+                  {(holeCountGeneral > 0 || holeCountDifficult > 0 || holeCountSpecial > 0 || holeCountBeam > 0) && (
                           <tr>
-                          <td className="border border-gray-400 p-2">타공 (일반/난타공/특수)</td>
-                          <td className="border border-gray-400 p-2 text-right">{holeCountGeneral + holeCountDifficult + holeCountSpecial}구</td>
+                          <td className="border border-gray-400 p-2">타공 (일반/난타공/특수/보)</td>
+                          <td className="border border-gray-400 p-2 text-right">{holeCountGeneral + holeCountDifficult + holeCountSpecial + holeCountBeam}구</td>
                           <td className="border border-gray-400 p-2 text-right">
                               {formatCurrency(
-                                  (holeCountGeneral * 30000) + (holeCountDifficult * 50000) + (holeCountSpecial * 70000)
+                                  (holeCountGeneral * 30000) + (holeCountDifficult * 40000) + (holeCountSpecial * 50000) + (holeCountBeam * 100000)
                               )}원
                           </td>
                           </tr>
@@ -1269,7 +1317,7 @@ ${customItem2Name || customItem2Price > 0 ? `- 추가: ${customItem2Name || '기
                       <tr>
                           <td className="border border-gray-400 p-2">전원선 ({powerCableType === 'under40' ? '40평↓' : '40평↑'})</td>
                           <td className="border border-gray-400 p-2 text-right">{powerCableLength}m</td>
-                          <td className="border border-gray-400 p-2 text-right">{formatCurrency(powerCableLength * (powerCableType === 'under40' ? 10000 : 15000))}원</td>
+                          <td className="border border-gray-400 p-2 text-right">{formatCurrency(powerCableLength * (powerCableType === 'under40' ? 12000 : 20000))}원</td>
                       </tr>
                   )}
                   {Object.keys(breakerCounts).map(key => breakerCounts[key] > 0 && (
@@ -1291,6 +1339,20 @@ ${customItem2Name || customItem2Price > 0 ? `- 추가: ${customItem2Name || '기
                               <td className="border border-gray-400 p-2">추가 드레인 (호스/PVC)</td>
                               <td className="border border-gray-400 p-2 text-right">{drainHoseLength + drainPVCLength}m</td>
                               <td className="border border-gray-400 p-2 text-right">{formatCurrency((drainHoseLength * 4000) + (drainPVCLength * 10000))}원</td>
+                      </tr>
+                  )}
+                  {/* 동배관 교체 (인쇄용) */}
+                  {acMode !== 'heating' && (copperPipeCounts.wall > 0 || copperPipeCounts.stand > 0) && (
+                      <tr>
+                          <td className="border border-gray-400 p-2">동배관 교체</td>
+                          <td className="border border-gray-400 p-2 text-right">
+                              {copperPipeCounts.wall > 0 && `벽걸이 ${copperPipeCounts.wall}개`}
+                              {copperPipeCounts.wall > 0 && copperPipeCounts.stand > 0 && ', '}
+                              {copperPipeCounts.stand > 0 && `스탠드 ${copperPipeCounts.stand}개`}
+                          </td>
+                          <td className="border border-gray-400 p-2 text-right">
+                              {formatCurrency((copperPipeCounts.wall * PRICING.copperPipe.wall) + (copperPipeCounts.stand * PRICING.copperPipe.stand))}원
+                          </td>
                       </tr>
                   )}
                   {removalType !== 'none' && removalType !== 'basic' && (
